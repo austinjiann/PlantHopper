@@ -388,11 +388,18 @@ main {
 }
 
 .growth-graph {
-  height: 80px;
+  height: 180px;
   display: grid;
-  place-items: center;
+  align-items: stretch;
+  justify-items: stretch;
   background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0));
   border-radius: 10px;
+}
+
+/* Ensure charts fill the container when centered by grid */
+.growth-graph > * {
+  width: 100%;
+  height: 100%;
 }
 
 .growth-scale {
@@ -646,6 +653,16 @@ main {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* Image placeholder inside plant cards */
+.plant-image-thumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  min-height: 140px;
+  border-radius: var(--radius-md);
+  border: 2px dashed rgba(148, 163, 184, 0.35);
+  background: rgba(236, 253, 245, 0.6);
 }
 
 .meta-label {

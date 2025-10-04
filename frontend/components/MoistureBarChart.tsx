@@ -13,24 +13,7 @@ interface MoistureBarChartProps {
 }
 
 export function MoistureBarChart({ plantId = "plant1" }: MoistureBarChartProps) {
-  const [data, setData] = React.useState<Array<{ dateMs: number; dateLabel: string; moisture: number }>>([]);
-
-  // Precompute ticks and domain so each point is labeled and spacing looks right
-  const xTicks = React.useMemo(() => data.map((d) => d.dateMs), [data]);
-  const xDomain = React.useMemo(() => {
-    if (data.length === 0) return ["auto", "auto"] as const;
-    let min = data[0].dateMs;
-    let max = data[0].dateMs;
-    for (const d of data) {
-      if (d.dateMs < min) min = d.dateMs;
-      if (d.dateMs > max) max = d.dateMs;
-    }
-    const span = Math.max(0, max - min);
-    const basePad = 60 * 1000; // 1 minute minimum padding
-    const spanPad = Math.round(span * 0.06); // 6% of span
-    const pad = Math.max(basePad, spanPad);
-    return [min - pad, max + pad] as [number, number];
-  }, [data]);
+  const [data, setData] = React.useState<Array<{ dateMs: number; dateLabel: string; timeLabel: string; moisture: number }>>([]);
 
   React.useEffect(() => {
     const readingsRef = collection(db, "moisturedata", plantId, "readings");
@@ -58,9 +41,10 @@ export function MoistureBarChart({ plantId = "plant1" }: MoistureBarChartProps) 
 
           const dateMs = date.getTime();
           const dateLabel = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-          return { dateMs, dateLabel, moisture };
+          const timeLabel = date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
+          return { dateMs, dateLabel, timeLabel, moisture };
         })
-        .filter((p) => p && Number.isFinite(p.dateMs) && Number.isFinite(p.moisture)) as Array<{ dateMs: number; dateLabel: string; moisture: number }>;
+        .filter((p) => p && Number.isFinite(p.dateMs) && Number.isFinite(p.moisture)) as Array<{ dateMs: number; dateLabel: string; timeLabel: string; moisture: number }>;
 
       console.log("[MoistureChart] formatted points:", formatted.length, formatted);
       setData(formatted);
@@ -76,35 +60,30 @@ export function MoistureBarChart({ plantId = "plant1" }: MoistureBarChartProps) 
     <Card className="py-0" style={{ background: "transparent", border: "none", boxShadow: "none" }}>
       <CardContent className="px-0 py-0">
         <div style={{ width: "100%" }}>
-          <ResponsiveContainer width="100%" height={130} key={`${plantId}:${data.length}`}>
+          <ResponsiveContainer width="100%" height={180} key={`${plantId}:${data.length}`}>
             <LineChart data={data} margin={{ left: 12, right: 12, top: 8, bottom: 16 }}>
               <CartesianGrid vertical={false} stroke="rgba(148,163,184,0.25)" />
               <XAxis
                 type="number"
                 dataKey="dateMs"
-                scale="time"
-                tickLine={true}
-                axisLine={true}
+                domain={["dataMin", "dataMax"]}
+                tickLine
+                axisLine
                 tickMargin={8}
-                minTickGap={0}
-                domain={xDomain as any}
-                ticks={xTicks as any}
+                stroke="#94a3b8"
                 tickFormatter={(ms: number) =>
                   new Date(ms).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false })
                 }
-                stroke="#94a3b8"
               />
               <YAxis domain={[0, 100]} allowDecimals={false} width={36} tickFormatter={(v: number) => `${v}%`} stroke="#94a3b8" />
               <Tooltip
                 formatter={(v: any) => [`${Math.round(Number(v))}%`, "Moisture"]}
-                labelFormatter={(ms: number) =>
-                  new Date(ms).toLocaleString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false })
-                }
+                labelFormatter={(label: any) => String(label)}
               />
               <Line
-                type="linear"
+                type="monotone"
                 dataKey="moisture"
-                stroke="var(--accent-strong, #16a34a)"
+                stroke="#16a34a"
                 strokeWidth={2}
                 dot={{ r: 4, stroke: '#16a34a', fill: '#16a34a' }}
                 activeDot={{ r: 5 }}
@@ -114,11 +93,6 @@ export function MoistureBarChart({ plantId = "plant1" }: MoistureBarChartProps) 
             </LineChart>
           </ResponsiveContainer>
         </div>
-        {data.length === 0 && (
-          <div className="secondary-text" style={{ textAlign: "center", marginTop: 8 }}>
-            No readings yet
-          </div>
-        )}
       </CardContent>
     </Card>
   );
