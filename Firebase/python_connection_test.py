@@ -1,26 +1,14 @@
-<<<<<<< HEAD
 import cv2
 import numpy as np
 import argparse
 from pathlib import Path
 import threading
 import time
-=======
-import os
->>>>>>> d10ba29914394abe694d686d626d410915c75807
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-<<<<<<< HEAD
 # Global flag for graceful shutdown
 running = True
-=======
-# Prefer GOOGLE_APPLICATION_CREDENTIALS if set; otherwise use local serviceAccount.json
-service_account_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "./Firebase/serviceAccount.json")
-cred = credentials.Certificate(service_account_path)
-firebase_admin.initialize_app(cred)
-db = firestore.client()
->>>>>>> d10ba29914394abe694d686d626d410915c75807
 
 def load_calibration(calib_path: str):
     """
@@ -37,7 +25,6 @@ def load_calibration(calib_path: str):
         raise ValueError("Calibration file missing 'camera_matrix' or 'dist_coeffs'.")
     return camera_matrix, dist_coeffs
 
-<<<<<<< HEAD
 def rvec_to_euler_xyz(rvec: np.ndarray):
     """
     Convert OpenCV Rodrigues rvec to Euler angles (roll, pitch, yaw) in radians,
@@ -46,11 +33,6 @@ def rvec_to_euler_xyz(rvec: np.ndarray):
     R, _ = cv2.Rodrigues(rvec)
     sy = np.sqrt(R[0,0]*R[0,0] + R[1,0]*R[1,0])
     singular = sy < 1e-6
-=======
-plant_id = os.getenv("PLANTHOPPER_PLANT_ID", "orchid-01")
-doc_ref = db.collection("plants").document(plant_id)
-doc_watch = doc_ref.on_snapshot(on_snapshot)
->>>>>>> d10ba29914394abe694d686d626d410915c75807
 
     if not singular:
         roll  = np.arctan2(R[2,1], R[2,2])
