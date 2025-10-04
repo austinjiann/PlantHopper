@@ -1,21 +1,21 @@
 :root {
-  --background: #ffffff;
+  --background: #f8faf9;
   --surface: #ffffff;
-  --surface-subtle: #f9fafb;
-  --surface-highlight: #f3f4f6;
-  --accent: #22c55e; /* green */
-  --accent-strong: #16a34a;
+  --surface-subtle: #f1f7f3;
+  --surface-highlight: #e8f5e8;
+  --accent: #16a34a; /* green */
+  --accent-strong: #15803d;
   --danger: #ef4444;
   --warning: #f59e0b;
-  --text-primary: #111827;
-  --text-secondary: #1f2937;
-  --text-muted: #6b7280;
-  --border: #e5e7eb;
+  --text-primary: #0f172a;
+  --text-secondary: #1e293b;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
   --radius-lg: 20px;
   --radius-md: 12px;
   --radius-sm: 8px;
-  --shadow-soft: 0 20px 40px -20px rgba(0, 0, 0, 0.12);
-  --shadow-sm: 0 6px 16px -8px rgba(0, 0, 0, 0.10);
+  --shadow-soft: 0 20px 40px -20px rgba(15, 23, 42, 0.08);
+  --shadow-sm: 0 6px 16px -8px rgba(15, 23, 42, 0.06);
   --transition: 200ms ease;
   --sidebar: 100px;
 }
@@ -29,14 +29,14 @@ body {
   max-width: 100vw;
   overflow-x: hidden;
   overscroll-behavior: none;
-  background-color: #ffffff; /* fallback so rubber-band never shows white */
+  background-color: #f0fdf4; /* fallback so rubber-band never shows white */
 }
 
 /* apply page tint to html as well to avoid white during overscroll */
 html {
   min-height: 100%;
   /* gradient rendered via fixed pseudo-element to avoid WebKit white flashes */
-  background: #f8f8f8;
+  background: #f0fdf4;
 }
 
 html::before {
@@ -45,7 +45,7 @@ html::before {
   inset: 0;
   pointer-events: none;
   z-index: -1;
-  background: linear-gradient(180deg, #e0f0e8 0%, #eefaf4 40%, #d3ecdf 100%);
+  background: linear-gradient(180deg, #ecfdf5 0%, #f0fdf4 30%, #dcfce7 70%, #bbf7d0 100%);
 }
 
 body {
@@ -61,8 +61,8 @@ body {
   position: fixed;
   inset: 0 auto 0 0;
   width: 100px;
-  background: #0f172a;
-  border-right: 1px solid #0b1223;
+  background: #0f1a14;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -100,19 +100,22 @@ body {
   border-radius: 12px;
   display: grid;
   place-items: center;
-  color: #cbd5e1;
+  color: rgba(255, 255, 255, 0.7);
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 200ms ease;
 }
 
 .mini-sidebar__item:hover {
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.04);
 }
 
 .mini-sidebar__item--active {
   color: #16a34a;
   background: #ffffff;
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.3);
 }
 
 .mini-sidebar-offset {
@@ -142,7 +145,7 @@ main {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 18px;
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.08);
   transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
 }
 
@@ -254,6 +257,53 @@ main {
 .plant-card:hover {
   transform: none;
   border-color: var(--border);
+}
+
+.add-plant-card {
+  position: relative;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  border: 2px dashed var(--border);
+  padding: 20px;
+  box-shadow: none;
+  transition: all var(--transition);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.add-plant-card:hover {
+  border-color: var(--accent);
+  background: var(--surface-subtle);
+  transform: none;
+}
+
+.add-plant-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.add-plant-plus {
+  font-size: 2.5rem;
+  font-weight: 300;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.add-plant-text {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.add-plant-card:hover .add-plant-plus,
+.add-plant-card:hover .add-plant-text {
+  color: var(--accent);
 }
 
 .plant-card-header {

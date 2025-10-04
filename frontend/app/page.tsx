@@ -70,6 +70,12 @@ export default function DashboardPage() {
             {plants.slice(0, 3).map((plant) => (
               <PlantCard key={plant.id} plant={plant} />
             ))}
+            <div className="add-plant-card">
+              <div className="add-plant-content">
+                <div className="add-plant-plus">+</div>
+                <div className="add-plant-text">Add new plant</div>
+              </div>
+            </div>
           </div>
         </div>
         <div style={{ display: "grid", gap: 8, rowGap: 8, alignItems: "start", marginTop: 72 }}>
