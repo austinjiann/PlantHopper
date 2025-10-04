@@ -53,7 +53,7 @@ export function MetricsCard({ label, value, description, trend, accent = "green"
             }}
           >
             <span aria-hidden>
-              {trend.direction === "up" ? "▲" : trend.direction === "down" ? "▼" : "■"}
+              {trend.direction === "up" ? "+" : trend.direction === "down" ? "-" : "="}
             </span>
             {trend.label}
           </p>

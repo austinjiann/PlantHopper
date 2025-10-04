@@ -15,16 +15,10 @@ export default function DashboardPage() {
       <header className="header">
         <div className="header-row">
           <div className="header-title">
-            <h1>Plant Hopper Control</h1>
-            <StatusBadge variant="scheduled">Robots online</StatusBadge>
+            <h1>Plant Hopper</h1>
           </div>
           <div className="header-actions">
-            <button className="button">
-              <span aria-hidden>📥</span>
-              Sync devices
-            </button>
             <button className="button button--primary">
-              <span aria-hidden>➕</span>
               Register plant
             </button>
           </div>
@@ -111,7 +105,7 @@ export default function DashboardPage() {
                   <tr key={`${plant.id}-attention`}>
                     <td>{plant.name}</td>
                     <td>
-                      {plant.soilMoisture}% • target {plant.targetMoisture}%
+                      {plant.soilMoisture}% - target {plant.targetMoisture}%
                     </td>
                     <td>
                       <StatusBadge variant={plant.pumpStatus} />

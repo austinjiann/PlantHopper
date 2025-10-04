@@ -7,9 +7,9 @@ interface PlantCardProps {
 }
 
 const PumpStatusIcon: Record<Plant["pumpStatus"], string> = {
-  idle: "●",
-  watering: "💧",
-  scheduled: "⏱"
+  idle: "Idle",
+  watering: "Watering",
+  scheduled: "Scheduled"
 };
 
 function formatDistanceLabel(date: string) {

@@ -18,7 +18,6 @@ export function WateringTimeline({ items }: WateringTimelineProps) {
         {items.map((item) => (
           <div key={item.plantId} className="timeline-item">
             <div className="timeline-plant">
-              <span style={{ fontSize: "1.2rem" }}>🤖</span>
               <div>
                 <div>{item.plantName}</div>
                 <p className="secondary-text" style={{ fontSize: "0.8rem" }}>{item.action}</p>
