@@ -66,7 +66,7 @@ export default function DashboardPage() {
           <h2 className="section-title">Plant overview</h2>
 
           <div className="plant-grid">
-            {plants.slice(0, 4).map((plant) => (
+            {plants.slice(0, 5).map((plant) => (
               <PlantCard key={plant.id} plant={plant} />
             ))}
             
