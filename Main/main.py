@@ -140,8 +140,8 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
 
                     # Configurable behavior (kept simple and local)
                     WATER_SEND_HZ = float(data.get("waterSendHz", 10.0))          # how often to send messages
-                    WATER_SCAN_SECONDS = float(data.get("waterScanSeconds", 12))  # how long to scan before giving up
-                    WATER_FIRE_SECONDS = float(data.get("waterFireSeconds", 5.0)) # how long to send found:true
+                    WATER_SCAN_SECONDS = float(data.get("waterScanSeconds", 15))  # how long to scan before giving up
+                    WATER_FIRE_SECONDS = float(data.get("waterFireSeconds", 8.0)) # how long to send found:true
                     DEFAULT_PITCH = float(data.get("waterPitchDeg", 0.0))         # default pitch when scanning
                     
                     # Phase 1: Send found:false at a steady rate while scanning for the target tag.
@@ -211,7 +211,7 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
                         continue
 
                     TRACK_SEND_HZ = float(data.get("trackSendHz", 20.0))
-                    TRACK_SECONDS = float(data.get("trackSeconds", 10.0))
+                    TRACK_SECONDS = float(data.get("trackSeconds", 15.0))
                     DEFAULT_PITCH = float(data.get("trackPitchDeg", 0.0))
                     dt = 1.0 / max(TRACK_SEND_HZ, 1e-3)
                     until = time.time() + max(TRACK_SECONDS, 0.5)

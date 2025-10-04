@@ -7,8 +7,8 @@ Servo pitch;
 Servo turret;
 Servo shooter;
 
-const float SWEEP_STEP_UNITS = 0.8;
-const unsigned long SWEEP_PERIOD_MS = 20;
+const float SWEEP_STEP_UNITS = 3.0;
+const unsigned long SWEEP_PERIOD_MS = 10;
 
 // Positional shooter (neutral is 90)
 const int SHOOT_NEUTRAL = 90;
