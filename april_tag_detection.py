@@ -1,0 +1,98 @@
+import cv2
+import numpy as np
+import argparse
+from pathlib import Path
+
+def load_calibration(calib_path: str):
+    """
+    Load OpenCV calibration YAML/JSON saved via cv2.FileStorage.
+    Expects keys: camera_matrix, dist_coeffs
+    """
+    fs = cv2.FileStorage(calib_path, cv2.FILE_STORAGE_READ)
+    if not fs.isOpened():
+        raise FileNotFoundError(f"Could not open calibration file: {calib_path}")
+    camera_matrix = fs.getNode("camera_matrix").mat()
+    dist_coeffs = fs.getNode("dist_coeffs").mat()
+    fs.release()
+    if camera_matrix is None or dist_coeffs is None:
+        raise ValueError("Calibration file missing 'camera_matrix' or 'dist_coeffs'.")
+    return camera_matrix, dist_coeffs
+
+def main():
+    ap = argparse.ArgumentParser(description="AprilTag detection (OpenCV)")
+    ap.add_argument("--cam", type=int, default=0, help="Camera index (default 0)")
+    ap.add_argument("--width", type=int, default=1280, help="Capture width")
+    ap.add_argument("--height", type=int, default=720, help="Capture height")
+    ap.add_argument("--dict", type=str, default="DICT_APRILTAG_36h11",
+                    help="Tag dictionary (e.g., DICT_APRILTAG_36h11, DICT_APRILTAG_25h9)")
+    ap.add_argument("--tag-size", type=float, default=0.05,
+                    help="Tag size in meters (edge length) for pose estimation")
+    ap.add_argument("--calib", type=str, default="",
+                    help="Path to camera calibration file (YAML/JSON) with camera_matrix & dist_coeffs")
+    args = ap.parse_args()
+
+    # ----- Camera -----
+    cap = cv2.VideoCapture(args.cam)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
+    if not cap.isOpened():
+        raise RuntimeError(f"Could not open camera index {args.cam}")
+
+    # ----- Dictionary & Detector -----
+    # Requires opencv-contrib-python
+    if not hasattr(cv2, "aruco"):
+        raise ImportError("cv2.aruco not found. Install: pip install opencv-contrib-python")
+
+    try:
+        dictionary_id = getattr(cv2.aruco, args.dict)
+    except AttributeError:
+        raise ValueError(f"Unknown dictionary '{args.dict}'. "
+                         f"Try DICT_APRILTAG_36h11 or DICT_APRILTAG_25h9.")
+
+    dictionary = cv2.aruco.getPredefinedDictionary(dictionary_id)
+    params = cv2.aruco.DetectorParameters()
+    detector = cv2.aruco.ArucoDetector(dictionary, params)
+
+    # ----- Optional calibration -----
+    camera_matrix = None
+    dist_coeffs = None
+    if args.calib:
+        camera_matrix, dist_coeffs = load_calibration(args.calib)
+        print("Loaded calibration.")
+
+    print("Press Q to quit.")
+    while True:
+        ok, frame = cap.read()
+        if not ok:
+            print("Failed to grab frame.")
+            break
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        corners, ids, _ = detector.detectMarkers(gray)
+
+        if ids is not None and len(ids) > 0:
+            # Draw detected boxes and IDs
+            cv2.aruco.drawDetectedMarkers(frame, corners, ids)
+
+            # Pose estimation if calibration provided
+            if camera_matrix is not None and dist_coeffs is not None:
+                # Estimate pose per marker
+                rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
+                    corners, args.tag_size, camera_matrix, dist_coeffs
+                )
+                for rvec, tvec in zip(rvecs, tvecs):
+                    cv2.drawFrameAxes(frame, camera_matrix, dist_coeffs, rvec, tvec, args.tag_size * 0.5)
+        else:
+            # Optional: show hint when nothing detected
+            cv2.putText(frame, "No AprilTags detected", (20, 40),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
+
+        cv2.imshow("AprilTag Detector", frame)
+        if cv2.waitKey(1) & 0xFF in (ord('q'), ord('Q')):
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    main()
