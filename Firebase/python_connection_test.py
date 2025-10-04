@@ -10,6 +10,9 @@ from firebase_admin import credentials, firestore
 # Global flag for graceful shutdown
 running = True
 
+# Store previous tag states for change detection
+previous_tag_states = {}
+
 def load_calibration(calib_path: str):
     """
     Load OpenCV calibration YAML/JSON saved via cv2.FileStorage.
@@ -109,7 +112,11 @@ def run_camera(args):
     """
     Run AprilTag detection in the main thread (required for OpenCV GUI)
     """
-    global running
+    global running, previous_tag_states
+    
+    # Threshold for detecting significant changes (in meters for position, degrees for rotation)
+    POSITION_THRESHOLD = 0.01  # 1 cm
+    ROTATION_THRESHOLD = 2.0   # 2 degrees
     
     # ----- Camera -----
     cap = cv2.VideoCapture(args.cam)
@@ -184,11 +191,45 @@ def run_camera(args):
 
                         roll, pitch, yaw = rvec_to_euler_xyz(rvec)
                         rpy_deg = np.degrees([roll, pitch, yaw])
+                        
+                        tag_id = int(ids[i])
+                        
+                        # Check if this is a new tag or if values have changed significantly
+                        should_print = False
+                        if tag_id not in previous_tag_states:
+                            should_print = True
+                            print(f"\n[Camera] New tag detected: ID {tag_id}")
+                        else:
+                            prev_state = previous_tag_states[tag_id]
+                            # Check position changes
+                            pos_change = np.linalg.norm(tvec - prev_state['tvec'])
+                            # Check rotation changes
+                            rot_change = np.max(np.abs(rpy_deg - prev_state['rpy_deg']))
+                            
+                            if pos_change > POSITION_THRESHOLD:
+                                should_print = True
+                                print(f"\n[Camera] Tag {tag_id} position changed by {pos_change:.4f}m")
+                            elif rot_change > ROTATION_THRESHOLD:
+                                should_print = True
+                                print(f"\n[Camera] Tag {tag_id} rotation changed by {rot_change:.2f}°")
+                        
+                        # Update state
+                        previous_tag_states[tag_id] = {
+                            'tvec': tvec.copy(),
+                            'rpy_deg': rpy_deg.copy()
+                        }
+                        
+                        # Print detailed information if there was a change
+                        if should_print:
+                            print(f"  ID: {tag_id}")
+                            print(f"  Position (x, y, z): ({tvec[0]:+.4f}, {tvec[1]:+.4f}, {tvec[2]:+.4f}) meters")
+                            print(f"  Distance from camera: {np.linalg.norm(tvec):.4f} meters")
+                            print(f"  Rotation (roll, pitch, yaw): ({rpy_deg[0]:+.2f}°, {rpy_deg[1]:+.2f}°, {rpy_deg[2]:+.2f}°)")
 
                         c = corners[i].reshape(-1, 2)
                         x_text, y_text = int(c[0,0]), int(c[0,1]) - 10
 
-                        lines = [f"id={int(ids[i])}"] + format_pose_text(rpy_deg, tvec)
+                        lines = [f"id={tag_id}"] + format_pose_text(rpy_deg, tvec)
                         for k, line in enumerate(lines):
                             yy = y_text - 20 * k
                             cv2.putText(frame, line, (x_text, max(yy, 15)),
