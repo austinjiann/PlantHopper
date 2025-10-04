@@ -56,7 +56,7 @@ def _arduino_send_line(arduino: ArduinoController, line: str) -> bool:
 def _send_cmd_water(arduino: ArduinoController, found: bool, dx_m: float, pitch_deg: float):
     """
     Build & send the WATER command line in the same pattern as tag_shoot_test.py:
-    cmd:WATER;found:bool;dx:num;pitch:deg;\n
+    cmd:WATER;found:bool;dx:num;pitch:deg;
     """
     line = (
         f"cmd:WATER;"
@@ -73,7 +73,7 @@ def _send_cmd_water(arduino: ArduinoController, found: bool, dx_m: float, pitch_
 def _send_cmd_track(arduino: ArduinoController, tag_id: int, found: bool, dx_m: float, pitch_deg: float, shoot: bool=False):
     """
     Build & send the TRACK command line in the same pattern as tag_pid_test.py:
-    cmd:TRACK;id:num;found:bool;dx:num;pitch:deg;shoot:bool\n
+    cmd:TRACK;id:num;found:bool;dx:num;pitch:deg;shoot:bool
     """
     line = (
         f"cmd:TRACK;"
@@ -89,18 +89,74 @@ def _send_cmd_track(arduino: ArduinoController, tag_id: int, found: bool, dx_m: 
         print("[SERIAL WRITE WARNING] TRACK: Could not find a working write method on ArduinoController.")
 
 
-def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
-                    cap: cv2.VideoCapture, plant_tag_mapping: dict, arduino):
+# ---------------- Moisture reading helpers (match UniversalControl.ino) ----------------
+def _parse_kv_line(line: str):
+    """
+    Parse 'key:value;key:value;...' into a dict; keys are lowercased.
+    """
+    kv = {}
+    for part in line.split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        if ":" in part:
+            k, v = part.split(":", 1)
+            kv[k.strip().lower()] = v.strip()
+    return kv
 
+def _read_moisture_snapshot(arduino: ArduinoController, seconds: float = 3.0):
+    """
+    Read Arduino serial for a short window and collect the latest moisture
+    for each sensor label, matching lines like:
+      cmd:MOISTURE;id:sensor_3;percent:0.6
+    Returns: dict {sensor_label(str): percent_float (0..1)}
+    """
+    ser = getattr(arduino, "ser", None) or getattr(arduino, "serial", None)
+    data = {}
+    if ser is None:
+        print("[Sensor] Arduino serial handle not available.")
+        return data
+
+    deadline = time.time() + max(0.5, seconds)
+    while time.time() < deadline:
+        try:
+            raw = ser.readline().decode("utf-8", errors="ignore").strip()
+        except Exception as e:
+            print(f"[Sensor] Serial read error: {e}")
+            break
+        if not raw:
+            continue
+        print(raw)  # debug
+
+        kv = _parse_kv_line(raw)
+        if not kv or kv.get("cmd", "").upper() != "MOISTURE":
+            continue
+
+        label = kv.get("id", "")
+        pct_s = kv.get("percent", "")
+        if not label or not pct_s:
+            continue
+
+        # Normalize label and percent
+        sensor_label = label.strip().lower()  # e.g., "sensor_3"
+        try:
+            pct = float(pct_s)
+        except ValueError:
+            continue
+        if pct > 1.0:  # accept percent 0..100 and convert to 0..1
+            pct = pct / 100.0
+
+        data[sensor_label] = pct
+
+    return data
+# --------------------------------------------------------------------------------------
+
+
+def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
+                    cap: cv2.VideoCapture, plant_tag_mapping: dict):
     """
     Thread function for Firebase listener.
-    Handles water, sweep, and sensor commands from Firebase.
-    
-    Args:
-        firebase_cred_path: Path to Firebase credentials JSON
-        shooting_system: ShootingSystem instance for executing actions
-        cap: Video capture object (shared with main thread)
-        plant_tag_mapping: Dict mapping plant IDs to AprilTag IDs
+    Handles water, sweep, track, and sensor commands from Firebase.
     """
     global running
     
@@ -142,7 +198,7 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
                     # Configurable behavior (kept simple and local)
                     WATER_SEND_HZ = float(data.get("waterSendHz", 10.0))          # how often to send messages
                     WATER_SCAN_SECONDS = float(data.get("waterScanSeconds", 12))  # how long to scan before giving up
-                    WATER_FIRE_SECONDS = float(data.get("waterFireSeconds", 5.0)) # how long to send found:true
+                    WATER_FIRE_SECONDS = float(data.get("waterFireSeconds", 1.0)) # how long to send found:true
                     DEFAULT_PITCH = float(data.get("waterPitchDeg", 0.0))         # default pitch when scanning
                     
                     # Phase 1: Send found:false at a steady rate while scanning for the target tag.
@@ -197,8 +253,8 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
                     
                     print(f"[Firebase] ===== WATER COMMAND COMPLETE =====\n")
 
-                #code for tracking a plant
-                elif command == "track":
+                # code for tracking a plant
+                elif command == "scan":
                     print(f"[Firebase] ===== TRACK COMMAND for {plant_id} =====")
                     
                     target_tag_id = plant_tag_mapping.get(plant_id)
@@ -242,52 +298,49 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
                     })
                     print(f"[Firebase] ===== TRACK COMMAND COMPLETE =====\n")
 
-
                 elif command == "sensor":
-                    print("[Firebase] Processing sensor data...")
+                    print("[Firebase] Reading moisture snapshot from Arduino serial...")
 
-                    # Read line from Arduino serial output
-                    line = arduino.readline().decode("utf-8").strip()  # make sure 'arduino' = serial.Serial(...)
-                    print(f"[Serial] {line}")
+                    # Read for a short window to ensure we catch the MOISTURE lines
+                    readings = _read_moisture_snapshot(shooting_system.arduino, seconds=3.0)
 
-                    # Expect: cmd:MOISTURE;id:sensor_3;percent:42.1
-                    if not line.startswith("cmd:MOISTURE"):
-                        print("[Error] Invalid line from Arduino.")
-                    else:
+                    # Clear command + mark scan time on the plant that triggered the read
+                    db.collection("plants").document(plant_id).update({
+                        "command": None,
+                        "lastScanned": firestore.SERVER_TIMESTAMP
+                    })
+
+                    if not readings:
+                        print("[Firebase] No MOISTURE lines captured.")
+                        db.collection("plants").document(plant_id).update({
+                            "sensorReadSuccess": False,
+                            "error": "No MOISTURE lines captured"
+                        })
+                        continue
+
+                    plants_ref = db.collection("plants")
+                    any_written = False
+                    for sensor_label, moisture_value in readings.items():
                         try:
-                            # Parse fields
-                            parts = line.split(";")
-                            sensor_id = parts[1].split(":")[1]          # e.g. sensor_3
-                            moisture_value = float(parts[2].split(":")[1]) / 100.0  # convert 0–100 → 0–1
-
-                            print(f"[Firebase] Sensor {sensor_id} → {moisture_value:.2f}")
-
-                            # Reset command and log timestamp
-                            db.collection("plants").document(plant_id).update({
-                                "command": None,
-                                "lastScanned": firestore.SERVER_TIMESTAMP
-                            })
-
-                            # Match plant by sensorId
-                            plants_ref = db.collection("plants")
-                            query = plants_ref.where("sensorId", "==", sensor_id).stream()
-
-                            found = False
+                            # Write reading to all plants that have sensorId == sensor_label (STRING)
+                            query = plants_ref.where("sensorId", "==", sensor_label).stream()
+                            matched = False
                             for plant_doc in query:
-                                found = True
-                                print(f"[Firebase] Sensor {sensor_id} → Plant {plant_doc.id}")
-
+                                matched = True
+                                any_written = True
+                                print(f"[Firebase] {sensor_label} ({moisture_value:.3f}) → Plant {plant_doc.id}")
                                 db.collection("moisturedata").document(plant_doc.id).collection("readings").add({
                                     "timestamp": firestore.SERVER_TIMESTAMP,
-                                    "moisture": moisture_value
+                                    "moisture": float(moisture_value)  # 0..1 fraction
                                 })
-
-                            if not found:
-                                print(f"[Firebase] No plant found for sensor ID {sensor_id}.")
-
+                            if not matched:
+                                print(f"[Firebase] No plant found for sensorId '{sensor_label}'.")
                         except Exception as e:
-                            print(f"[Error] Failed to parse Arduino data: {e}")
+                            print(f"[Firebase] Error writing {sensor_label}: {e}")
 
+                    db.collection("plants").document(plant_id).update({
+                        "sensorReadSuccess": any_written
+                    })
 
         # Listen to all plants or specific plant
         doc_ref = db.collection("plants")
@@ -315,11 +368,6 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
 def run_camera(args, shooting_system: ShootingSystem, cap: cv2.VideoCapture):
     """
     Run AprilTag detection in the main thread (required for OpenCV GUI).
-    
-    Args:
-        args: Command line arguments
-        shooting_system: ShootingSystem instance
-        cap: Video capture object (shared with Firebase thread)
     """
     global running, previous_tag_states, latest_detections
     
@@ -428,7 +476,7 @@ def main():
     ap.add_argument("--height", type=int, default=1080, help="Capture height")
     ap.add_argument("--dict", type=str, default="DICT_APRILTAG_36h11",
                     help="Tag dictionary (e.g., DICT_APRILTAG_36h11, DICT_APRILTAG_25h9)")
-    ap.add_argument("--tag-size", type=float, default=0.072,
+    ap.add_argument("--tag-size", type=float, default=0.038,
                     help="Tag size in meters (edge length)")
     ap.add_argument("--calib", type=str, default="./Firebase/logitech_config.yaml",
                     help="Path to camera calibration file")
@@ -487,10 +535,9 @@ def main():
         # Start Firebase listener in background thread
         fb_thread = threading.Thread(
             target=firebase_thread,
-            args=(args.firebase_cred, shooting_system, cap, plant_tag_mapping, arduino),
+            args=(args.firebase_cred, shooting_system, cap, plant_tag_mapping),
             daemon=True
         )
-
         fb_thread.start()
         
         # Give Firebase thread a moment to initialize
@@ -516,7 +563,7 @@ def main():
         
         # Wait for Firebase thread to finish
         if 'fb_thread' in locals():
-            print("[Main] Waiting for Firebase thread to stop...")
+            print("[Main] Waiting for Firebase thread to stop...]")
             fb_thread.join(timeout=2)
         
         # Release camera
