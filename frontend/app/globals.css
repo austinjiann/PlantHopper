@@ -134,10 +134,321 @@ main {
   padding: 24px 24px 32px;
 }
 
+.detail-main {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  padding: 24px;
+  display: grid;
+  gap: 28px;
+  justify-items: center;
+  min-height: 100vh;
+  place-items: center;        /* centers items within their grid areas */
+  place-content: center;      /* centers the grid track itself vertically */
+}
+
+.detail-breadcrumbs {
+  display: flex;
+}
+
+.breadcrumb-link {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  transition: color var(--transition);
+}
+
+.breadcrumb-link:hover {
+  color: var(--text-secondary);
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 24px;
+}
+
+.detail-hero {
+  background: var(--surface);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 40px;
+  padding: 48px;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 1400px;
+  min-height: 680px;
+  margin: 0 auto;
+}
+
+.detail-hero::after {
+  content: none;
+}
+
+.detail-hero-body {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  margin-top: 24px; /* shift the text block down */
+}
+
+.detail-hero-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.detail-id {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.detail-hero h1 {
+  margin: 0;
+  font-size: 2.4rem;
+  color: var(--text-secondary);
+}
+
+.detail-subtitle {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+.detail-hero-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+}
+
+.detail-hero-metric {
+  display: grid;
+  gap: 6px;
+}
+
+/* Normalize pump row so badge/buttons baseline match the numeric metric values */
+.detail-hero-metric--pump {
+  align-self: end;
+  margin-top: 2px; /* subtle nudge down */
+}
+
+/* Lift inline action buttons slightly to align with numeric baselines */
+.detail-hero-metric--pump .water-button {
+  margin-top: -10px;
+}
+
+.metric-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.metric-value {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.detail-image-shell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+}
+
+.detail-image-placeholder {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  min-height: 520px;
+  border-radius: var(--radius-lg);
+  border: 2px dashed rgba(148, 163, 184, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(236, 253, 245, 0.6);
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  text-align: center;
+  padding: 16px;
+}
+
+.detail-image-content {
+  display: grid;
+  gap: 20px;
+  justify-items: center;
+}
+
+.water-action {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+
+.water-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 24px;
+  font-weight: 600;
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition);
+  min-width: 180px;
+}
+
+.water-button.water-button--inline {
+  padding: 8px 14px;
+  min-width: auto;
+  font-size: 0.85rem;
+}
+
+.water-button:hover:not(:disabled) {
+  background: var(--accent-strong);
+  transform: none;
+}
+
+.water-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+  transform: none;
+}
+
+.water-button__spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  animation: water-spin 0.6s linear infinite;
+}
+
+@keyframes water-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.water-feedback {
+  min-height: 20px;
+  font-size: 0.85rem;
+}
+
+.water-feedback__message {
+  display: inline-block;
+}
+
+.water-feedback__message--success {
+  color: var(--accent-strong);
+}
+
+.water-feedback__message--error {
+  color: var(--danger);
+}
+
+/* Right-side column stack (growth + tiles + audio) */
+.detail-side {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  padding-top: 12px; /* align right column start with image box top */
+}
+
+.growth-card {
+  background: #e5f7d9;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.growth-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.growth-title {
+  font-weight: 600;
+}
+
+.growth-period {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.growth-graph {
+  height: 80px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0));
+  border-radius: 10px;
+}
+
+.growth-scale {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-top: 6px;
+}
+
+.detail-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.detail-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.tile-label {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.tile-value {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.audio-card {
+  background: #889696;
+  border-radius: var(--radius-md);
+  color: white;
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.audio-title {
+  font-weight: 600;
+}
+
+.audio-wave {
+  height: 56px;
+  border-radius: 10px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255,255,255,0.35) 0,
+    rgba(255,255,255,0.35) 2px,
+    transparent 2px,
+    transparent 12px
+  );
 }
 
 .card {
@@ -244,6 +555,11 @@ main {
   margin-top: 16px;
 }
 
+.plant-card-link {
+  display: block;
+  color: inherit;
+}
+
 .plant-card {
   position: relative;
   background: var(--surface);
@@ -257,6 +573,12 @@ main {
 .plant-card:hover {
   transform: none;
   border-color: var(--border);
+}
+
+.plant-card-link:hover .plant-card {
+  border-color: rgba(34, 197, 94, 0.4);
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-2px);
 }
 
 .add-plant-card {
@@ -369,6 +691,100 @@ main {
 
 .sparkline-bar.is-low {
   background: rgba(239, 68, 68, 0.35);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.detail-card {
+  background: linear-gradient(135deg, #ffffff, #f6fff6);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: 18px;
+}
+
+.detail-card header h2 {
+  margin: 0 0 6px;
+}
+
+.detail-card--status {
+  grid-column: span 2;
+}
+
+.detail-status-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.detail-status-item {
+  display: grid;
+  gap: 8px;
+}
+
+.detail-trend {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.detail-trend-bar {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  width: 40px;
+  height: 160px;
+  align-content: end;
+}
+
+.detail-trend-bar .sparkline-bar {
+  width: 100%;
+  border-radius: 12px;
+}
+
+.trend-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.trend-value {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.detail-actions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.detail-actions li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: rgba(240, 253, 244, 0.7);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.detail-action-title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.detail-action-icon {
+  font-size: 1.3rem;
 }
 
 .header {
@@ -523,6 +939,10 @@ main {
     padding: 24px 20px 60px;
   }
 
+  .detail-main {
+    padding: 24px 20px 68px;
+  }
+
   .dashboard-grid {
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   }
@@ -533,5 +953,14 @@ main {
 
   .plant-grid {
     grid-template-columns: 1fr;
+  }
+
+  .detail-hero {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .detail-card--status {
+    grid-column: span 1;
   }
 }
