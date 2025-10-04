@@ -130,10 +130,10 @@ def main():
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2, cv2.LINE_AA)
 
                     # ===== SERIAL MESSAGE ON ID == 1 =====
-                    if tag_id == 1:
+                    if tag_id == 7:
                         dx_m = float(tvec[0])                 # camera X (meters)
                         pitch_deg = float(rpy_deg[1])         # pitch in degrees
-                        send_cmd_line(tag_id=1, found=True, dx_m=dx_m, pitch_deg=pitch_deg, shoot=False)
+                        send_cmd_line(tag_id=7, found=True, dx_m=dx_m, pitch_deg=pitch_deg, shoot=False)
                         
             else:
                 cv2.putText(frame, "Provide --calib to compute pose (rpy/dx/dy).",
@@ -141,7 +141,7 @@ def main():
         else:
             cv2.putText(frame, "No AprilTags detected", (20, 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
-            send_cmd_line(tag_id=1, found=False, dx_m=0, pitch_deg=0, shoot=False)
+            send_cmd_line(tag_id=7, found=False, dx_m=0, pitch_deg=0, shoot=False)
 
         cv2.imshow("AprilTag Detector", frame)
         if cv2.waitKey(1) & 0xFF in (ord('q'), ord('Q')):
