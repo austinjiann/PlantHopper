@@ -388,7 +388,7 @@ main {
 }
 
 .growth-graph {
-  height: 170px;
+  height: 185px;
   display: grid;
   align-items: stretch;
   justify-items: stretch;
