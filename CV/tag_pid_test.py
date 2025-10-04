@@ -11,7 +11,7 @@ time.sleep(3)
 def send_cmd_line(tag_id: int, found: bool, dx_m: float, pitch_deg: float, shoot: bool):
     # Build: cmd:search;id:num;found:bool;dx:num;pitch:deg;shoot:bool
     line = (
-        f"cmd:SEARCH;"
+        f"cmd:TRACK;"
         f"id:{tag_id};"
         f"found:{str(found).lower()};"
         f"dx:{dx_m:.3f};"
@@ -130,10 +130,10 @@ def main():
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2, cv2.LINE_AA)
 
                     # ===== SERIAL MESSAGE ON ID == 1 =====
-                    if tag_id == 7:
+                    if tag_id == 1:
                         dx_m = float(tvec[0])                 # camera X (meters)
                         pitch_deg = float(rpy_deg[1])         # pitch in degrees
-                        send_cmd_line(tag_id=7, found=True, dx_m=dx_m, pitch_deg=pitch_deg, shoot=False)
+                        send_cmd_line(tag_id=1, found=True, dx_m=dx_m, pitch_deg=pitch_deg, shoot=False)
                         
             else:
                 cv2.putText(frame, "Provide --calib to compute pose (rpy/dx/dy).",
