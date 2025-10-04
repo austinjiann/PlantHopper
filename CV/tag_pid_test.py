@@ -5,8 +5,8 @@ from pathlib import Path
 import serial
 import time
 
-ser = serial.Serial("/dev/tty.usbserial-A50285BI", 9600, timeout=1, write_timeout=1)
-time.sleep(2)
+ser = serial.Serial("/dev/tty.usbserial-A50285BI", 115200, timeout=1, write_timeout=1)
+time.sleep(3)
 
 def send_cmd_line(tag_id: int, found: bool, dx_m: float, pitch_deg: float, shoot: bool):
     # Build: cmd:search;id:num;found:bool;dx:num;pitch:deg;shoot:bool
@@ -21,6 +21,7 @@ def send_cmd_line(tag_id: int, found: bool, dx_m: float, pitch_deg: float, shoot
     try:
         print(line)
         ser.write(line.encode())
+        time.delay(0.3)
     except Exception as e:
         # Non-fatal: print once per issue if needed
         print(f"[SERIAL WRITE ERROR] {e}")

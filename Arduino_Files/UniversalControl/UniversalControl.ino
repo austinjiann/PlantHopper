@@ -1,5 +1,5 @@
 #include <Servo.h>
-#define kP -40
+#define kP -20
 
 // Servo myServo;
 Servo pitch;
@@ -15,7 +15,7 @@ int    cmdPitch = 0;
 bool   cmdShoot = false;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.setTimeout(5); 
   pitch.attach(9, 1000, 2200); 
   turret.attach(10);
@@ -98,9 +98,6 @@ void loop() {
 
 
   // myServo.write(0);
-
-  delay(200);
-
 
   // myServo.write(165);
   // myServo2.write(165);
