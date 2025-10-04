@@ -62,11 +62,11 @@ export default function PlantDetailPage({ params }: PlantDetailPageProps) {
               <div className="detail-hero-metric detail-hero-metric--pump">
                 <span className="metric-label">Pump status</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <StatusBadge variant={plant.pumpStatus} />
-                  {/* Override to Firestore doc id used by your listener/console */}
-                  <WaterPlantButton plantId={plant.id} targetDocId="plant1" variant="inline" />
-                  <WaterPlantButton plantId={plant.id} targetDocId="plant1" command="scan" label="Scan Plants" variant="inline" />
-                  <WaterPlantButton plantId={plant.id} targetDocId="plant1" command="sensor" label="Get Data" variant="inline" />
+              <StatusBadge variant={plant.pumpStatus} />
+              {/* Use Firestore doc id matching this plant */}
+              <WaterPlantButton plantId={plant.id} targetDocId={plant.id} variant="inline" />
+              <WaterPlantButton plantId={plant.id} targetDocId={plant.id} command="scan" label="Scan Plants" variant="inline" />
+              <WaterPlantButton plantId={plant.id} targetDocId={plant.id} command="sensor" label="Get Data" variant="inline" />
                 </div>
               </div>
             </div>
@@ -78,7 +78,7 @@ export default function PlantDetailPage({ params }: PlantDetailPageProps) {
               <span className="growth-period">1 day</span>
             </div>
             <div className="growth-graph">
-              <MoistureBarChart plantId="plant1" />
+              <MoistureBarChart plantId={plant.id} />
             </div>
           </div>
 
