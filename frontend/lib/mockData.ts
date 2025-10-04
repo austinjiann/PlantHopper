@@ -2,7 +2,7 @@ import type { Plant } from "@/types/plant";
 
 export const plants: Plant[] = [
   {
-    id: "orchid-01",
+    id: "plant1",
     name: "Aurora",
     species: "Phalaenopsis Orchid",
     location: "Atrium North",
@@ -18,7 +18,7 @@ export const plants: Plant[] = [
     moistureHistory: [65, 63, 60, 58, 57, 60, 62]
   },
   {
-    id: "fern-07",
+    id: "plant2",
     name: "Cascade",
     species: "Boston Fern",
     location: "Lab South",
@@ -34,7 +34,7 @@ export const plants: Plant[] = [
     moistureHistory: [48, 45, 42, 52, 55, 57, 59]
   },
   {
-    id: "ficus-02",
+    id: "plant3",
     name: "Atlas",
     species: "Ficus Lyrata",
     location: "Conference Hub",
@@ -50,7 +50,7 @@ export const plants: Plant[] = [
     moistureHistory: [80, 78, 76, 75, 70, 68, 65]
   },
   {
-    id: "succ-11",
+    id: "plant4",
     name: "Nova",
     species: "Haworthia",
     location: "Robotics Garage",
@@ -66,7 +66,7 @@ export const plants: Plant[] = [
     moistureHistory: [32, 35, 40, 45, 38, 34, 33]
   },
   {
-    id: "monstera-04",
+    id: "plant5",
     name: "Ripple",
     species: "Monstera Deliciosa",
     location: "Design Studio",
@@ -92,9 +92,9 @@ export const summary = {
 };
 
 export const wateringTimeline = [
-  { plantId: "fern-07", plantName: "Cascade", time: "in 45 min", action: "Auto-adjust watering cycle" },
-  { plantId: "monstera-04", plantName: "Ripple", time: "in 2 hrs", action: "Nutrient dose" },
-  { plantId: "orchid-01", plantName: "Aurora", time: "Tomorrow 09:00", action: "Standard watering" }
+  { plantId: "plant2", plantName: "Cascade", time: "in 45 min", action: "Auto-adjust watering cycle" },
+  { plantId: "plant5", plantName: "Ripple", time: "in 2 hrs", action: "Nutrient dose" },
+  { plantId: "plant1", plantName: "Aurora", time: "Tomorrow 09:00", action: "Standard watering" }
 ];
 
 export const healthDistribution = {
