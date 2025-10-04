@@ -231,6 +231,17 @@ main {
   gap: 6px;
 }
 
+/* Normalize pump row so badge/buttons baseline match the numeric metric values */
+.detail-hero-metric--pump {
+  align-self: end;
+  margin-top: 2px; /* subtle nudge down */
+}
+
+/* Lift inline action buttons slightly to align with numeric baselines */
+.detail-hero-metric--pump .water-button {
+  margin-top: -10px;
+}
+
 .metric-label {
   font-size: 0.72rem;
   letter-spacing: 0.05em;
@@ -257,13 +268,91 @@ main {
   min-height: 520px;
   border-radius: var(--radius-lg);
   border: 2px dashed rgba(148, 163, 184, 0.35);
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: rgba(236, 253, 245, 0.6);
   color: var(--text-muted);
   font-size: 0.95rem;
   text-align: center;
   padding: 16px;
+}
+
+.detail-image-content {
+  display: grid;
+  gap: 20px;
+  justify-items: center;
+}
+
+.water-action {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+
+.water-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 24px;
+  font-weight: 600;
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition);
+  min-width: 180px;
+}
+
+.water-button.water-button--inline {
+  padding: 8px 14px;
+  min-width: auto;
+  font-size: 0.85rem;
+}
+
+.water-button:hover:not(:disabled) {
+  background: var(--accent-strong);
+  transform: none;
+}
+
+.water-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+  transform: none;
+}
+
+.water-button__spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  animation: water-spin 0.6s linear infinite;
+}
+
+@keyframes water-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.water-feedback {
+  min-height: 20px;
+  font-size: 0.85rem;
+}
+
+.water-feedback__message {
+  display: inline-block;
+}
+
+.water-feedback__message--success {
+  color: var(--accent-strong);
+}
+
+.water-feedback__message--error {
+  color: var(--danger);
 }
 
 /* Right-side column stack (growth + tiles + audio) */

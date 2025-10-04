@@ -1,8 +1,11 @@
+import os
 import firebase_admin
 from firebase_admin import credentials, firestore
 import time
 
-cred = credentials.Certificate("./Firebase/planthopper-2fbc8-firebase-adminsdk-fbsvc-bf21b9e16e.json")
+# Prefer GOOGLE_APPLICATION_CREDENTIALS if set; otherwise use local serviceAccount.json
+service_account_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "./Firebase/serviceAccount.json")
+cred = credentials.Certificate(service_account_path)
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
@@ -18,7 +21,8 @@ def on_snapshot(doc_snapshot, changes, read_time):
                 "lastWatered": firestore.SERVER_TIMESTAMP
             })
 
-doc_ref = db.collection("plants").document("plant1")
+plant_id = os.getenv("PLANTHOPPER_PLANT_ID", "orchid-01")
+doc_ref = db.collection("plants").document(plant_id)
 doc_watch = doc_ref.on_snapshot(on_snapshot)
 
 # Keep the script running
