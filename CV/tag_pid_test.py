@@ -11,7 +11,7 @@ time.sleep(3)
 def send_cmd_line(tag_id: int, found: bool, dx_m: float, pitch_deg: float, shoot: bool):
     # Build: cmd:search;id:num;found:bool;dx:num;pitch:deg;shoot:bool
     line = (
-        f"cmd:search;"
+        f"cmd:SEARCH;"
         f"id:{tag_id};"
         f"found:{str(found).lower()};"
         f"dx:{dx_m:.3f};"
@@ -21,7 +21,7 @@ def send_cmd_line(tag_id: int, found: bool, dx_m: float, pitch_deg: float, shoot
     try:
         print(line)
         ser.write(line.encode())
-        time.delay(0.3)
+        # time.sleep(0.3)
     except Exception as e:
         # Non-fatal: print once per issue if needed
         print(f"[SERIAL WRITE ERROR] {e}")
@@ -62,8 +62,8 @@ def format_pose_text(rpy_deg, tvec):
 def main():
     ap = argparse.ArgumentParser(description="AprilTag detection (OpenCV)")
     ap.add_argument("--cam", type=int, default=0)
-    ap.add_argument("--width", type=int, default=1280)
-    ap.add_argument("--height", type=int, default=720)
+    ap.add_argument("--width", type=int, default=1920)
+    ap.add_argument("--height", type=int, default=1080)
     ap.add_argument("--dict", type=str, default="DICT_APRILTAG_36h11")
     ap.add_argument("--tag-size", type=float, default=0.08)
     ap.add_argument("--calib", type=str, default="/Users/jliu61/Documents/GitHub/PlantHopper/CV/logitech_config.yaml")
@@ -134,12 +134,14 @@ def main():
                         dx_m = float(tvec[0])                 # camera X (meters)
                         pitch_deg = float(rpy_deg[1])         # pitch in degrees
                         send_cmd_line(tag_id=1, found=True, dx_m=dx_m, pitch_deg=pitch_deg, shoot=False)
+                        
             else:
                 cv2.putText(frame, "Provide --calib to compute pose (rpy/dx/dy).",
                             (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,255), 2, cv2.LINE_AA)
         else:
             cv2.putText(frame, "No AprilTags detected", (20, 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
+            send_cmd_line(tag_id=1, found=False, dx_m=0, pitch_deg=0, shoot=False)
 
         cv2.imshow("AprilTag Detector", frame)
         if cv2.waitKey(1) & 0xFF in (ord('q'), ord('Q')):
