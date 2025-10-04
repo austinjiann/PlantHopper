@@ -10,9 +10,9 @@ import time
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-from arduino_controller import ArduinoController
-from apriltag_detector import AprilTagDetector
-from shooting_system import ShootingSystem
+from modules.arduino_controller import ArduinoController
+from modules.apriltag_detector import AprilTagDetector
+from modules.shooting_system import ShootingSystem
 
 
 # Global flag for graceful shutdown
