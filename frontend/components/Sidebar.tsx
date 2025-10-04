@@ -1,27 +1,26 @@
+"use client";
+import { usePathname } from "next/navigation";
 export function Sidebar() {
+  const pathname = usePathname();
+  const isHome = pathname === "/";
+  const isPlant = pathname.startsWith("/plants");
   return (
     <aside className="mini-sidebar" aria-label="Primary">
       <div className="mini-sidebar__logo" aria-label="Plant Hopper">PH</div>
       <nav className="mini-sidebar__nav">
-        <a className="mini-sidebar__item mini-sidebar__item--active" href="#" aria-label="Home" aria-current="page">
+        <a className={`mini-sidebar__item ${isHome ? "mini-sidebar__item--active" : ""}`} href="/" aria-label="Home" aria-current={isHome ? "page" : undefined}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 10l9-7 9 7"/>
             <path d="M5 10v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10"/>
             <path d="M9 22V12h6v10"/>
           </svg>
         </a>
-        <a className="mini-sidebar__item" href="#" aria-label="Plants">
+        <a className={`mini-sidebar__item ${isPlant ? "mini-sidebar__item--active" : ""}`} href="#" aria-label="Plants" aria-current={isPlant ? "page" : undefined}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 12v8"/>
             <path d="M7 20h10"/>
             <path d="M12 12c-3 0-6-2.5-6-5.5 3 0 6 2.5 6 5.5z"/>
             <path d="M12 12c3 0 6-2.5 6-5.5-3 0-6 2.5-6 5.5z"/>
-          </svg>
-        </a>
-        <a className="mini-sidebar__item" href="#" aria-label="Analytics">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="3 17 9 11 13 15 21 7"/>
-            <polyline points="14 7 21 7 21 14"/>
           </svg>
         </a>
       </nav>
