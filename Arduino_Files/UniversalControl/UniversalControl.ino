@@ -4,6 +4,7 @@
 // Servo myServo;
 Servo pitch;
 Servo turret;
+Servo shooter;
 bool shoot = false;
 double currTurretPos = 150.0;
 
@@ -20,6 +21,8 @@ void setup() {
   pitch.attach(9, 1000, 2200); 
   turret.attach(10);
   pitch.write(149);
+  shooter.attach(8);
+  shooter.write(90);
   // turret.write(90);
    // adjust to your servo’s safe range
 
@@ -95,6 +98,9 @@ void loop() {
       turret.write(convertTurretAngle(currTurretPos));
       pitch.write(convertPitchAngle(cmdPitch));
     }
+    else{
+      //sweep from 0 to 300
+    }
   }
   else if(cmd == "SHOOT"){
     //format 
@@ -112,6 +118,9 @@ void loop() {
     //alignment code
     if(cmdDx < 0.02){
       //SHOOT
+      shooter.write(180);
+      delay(5000);
+      shooter.write(90);
     }
     else{
       currTurretPos += cmdDx*kP;

@@ -6,19 +6,17 @@ Servo myServo2;
 
 void setup() {
   // myServo.attach(10); 
-  myServo2.attach(10);
+  myServo2.attach(8);
    // adjust to your servo’s safe range
 
 }
 
 void loop() {
 
-  int desiredAngle = 300;  // Example target (0–300 scale)
-
   // Map from 0–300 → 0–180
   // int servoAngle = map(desiredAngle, 0, 300, 0, 180);
 
-  myServo2.write(desiredAngle);
+  myServo2.write(90);
 
   // myServo2.write(140);
 
