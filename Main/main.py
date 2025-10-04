@@ -410,8 +410,8 @@ def main():
     
     ap = argparse.ArgumentParser(description="PlantHopper: AprilTag detection with Firebase and Arduino control")
     ap.add_argument("--cam", type=int, default=0, help="Camera index (default 0)")
-    ap.add_argument("--width", type=int, default=1280, help="Capture width")
-    ap.add_argument("--height", type=int, default=720, help="Capture height")
+    ap.add_argument("--width", type=int, default=1920, help="Capture width")
+    ap.add_argument("--height", type=int, default=1080, help="Capture height")
     ap.add_argument("--dict", type=str, default="DICT_APRILTAG_36h11",
                     help="Tag dictionary (e.g., DICT_APRILTAG_36h11, DICT_APRILTAG_25h9)")
     ap.add_argument("--tag-size", type=float, default=0.072,

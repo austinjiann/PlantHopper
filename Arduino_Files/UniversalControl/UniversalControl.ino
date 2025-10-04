@@ -42,6 +42,56 @@ float  cmdDx = 0.0f;
 int    cmdPitch = 0;
 bool   cmdShoot = false;
 
+// --- Moisture subsystem (non-blocking) ---
+struct MoistureSensor {
+  uint8_t pin;      // A0..A5
+  const char* id;   // label in prints
+  int dry;          // raw ADC when DRY   (0%)
+  int wet;          // raw ADC when WET (100%)
+};
+
+// Calibrate these to your probes (copied from MoistureTest.ino defaults)
+MoistureSensor MOIST_SENSORS[] = {
+  {A0, "sensor_1", 820, 300},
+  {A1, "sensor_2", 820, 300},
+  {A2, "sensor_3", 820, 300},
+  {A3, "sensor_4", 820, 300},
+  {A4, "sensor_5", 820, 300},
+};
+const size_t MOIST_COUNT = sizeof(MOIST_SENSORS) / sizeof(MoistureSensor);
+
+// print cadence (tune as you like)
+const unsigned long MOIST_PRINT_PERIOD_MS = 2000;
+unsigned long _moist_next_ms = 0;
+
+static float _moist_to_percent(int raw, int dry, int wet) {
+  // Map dry..wet -> 0..100 (clamped)
+  if (dry == wet) return 0.0f;
+  // Many probes read LOWER when wetter; adjust if your hardware is reversed
+  float pct = (float)(dry - raw) / (float)(dry - wet);
+  if (pct < 0.0f) pct = 0.0f;
+  if (pct > 1.0f) pct = 1.0f;
+  return pct;
+}
+
+static void maybePrintMoisture() {
+  unsigned long now = millis();
+  if (now < _moist_next_ms) return;
+  _moist_next_ms = now + MOIST_PRINT_PERIOD_MS;
+
+  // Emit one line per sensor, matching your universal serial style
+  // Format: cmd:MOISTURE;id:<label>;raw:<adc>;percent:<xx.x>
+  for (size_t i = 0; i < MOIST_COUNT; ++i) {
+    int raw = analogRead(MOIST_SENSORS[i].pin);
+    float pct = _moist_to_percent(raw, MOIST_SENSORS[i].dry, MOIST_SENSORS[i].wet);
+    Serial.print(F("cmd:MOISTURE;id:"));
+    Serial.print(MOIST_SENSORS[i].id);
+    Serial.print(F(";percent:"));
+    Serial.print(pct, 1);
+    Serial.print('\n');
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.setTimeout(5);
@@ -107,6 +157,7 @@ void serviceShooterTimer() {
 void loop() {
   // Service shooter timer EVERY loop so it remains non-blocking
   serviceShooterTimer();
+  maybePrintMoisture();
 
   // Only act when a serial line arrives
   if (!Serial.available()) return;
