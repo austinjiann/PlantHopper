@@ -1,9 +1,10 @@
+import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { MetricsCard } from "@/components/MetricsCard";
 import { PlantCard } from "@/components/PlantCard";
 import { WateringTimeline } from "@/components/WateringTimeline";
 import { StatusBadge } from "@/components/StatusBadge";
-import { plants, summary, wateringTimeline} from "@/lib/mockData";
+import { plants, summary, wateringTimeline } from "@/lib/mockData";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,22 +64,15 @@ export default function DashboardPage() {
       <section style={{ marginTop: 40, display: "grid", gap: 24, gridTemplateColumns: "1.3fr 1fr", alignItems: "start" }}>
         <div>
           <h2 className="section-title">Plant overview</h2>
-          <p className="secondary-text">
-            Monitor current moisture, upcoming watering, and environment metrics for each plant.
-          </p>
+
           <div className="plant-grid">
-            {plants.slice(0, 3).map((plant) => (
+            {plants.slice(0, 4).map((plant) => (
               <PlantCard key={plant.id} plant={plant} />
             ))}
-            <div className="add-plant-card">
-              <div className="add-plant-content">
-                <div className="add-plant-plus">+</div>
-                <div className="add-plant-text">Add new plant</div>
-              </div>
-            </div>
+            
           </div>
         </div>
-        <div style={{ display: "grid", gap: 8, rowGap: 8, alignItems: "start", marginTop: 72 }}>
+        <div style={{ display: "grid", gap: 8, rowGap: 8, alignItems: "start", marginTop: 40 }}>
           <div className="card">
             <h3>Attention queue</h3>
             <p className="secondary-text">
@@ -95,7 +89,11 @@ export default function DashboardPage() {
               <tbody>
                 {attentionPlants.map((plant) => (
                   <tr key={`${plant.id}-attention`}>
-                    <td>{plant.name}</td>
+                    <td>
+                      <Link href={`/plants/${plant.id}`} className="breadcrumb-link">
+                        {plant.name}
+                      </Link>
+                    </td>
                     <td>
                       {plant.soilMoisture}% - target {plant.targetMoisture}%
                     </td>
@@ -126,7 +124,11 @@ export default function DashboardPage() {
                 <tbody>
                   {activelyWatering.map((plant) => (
                     <tr key={`${plant.id}-watering`}>
-                      <td>{plant.name}</td>
+                      <td>
+                        <Link href={`/plants/${plant.id}`} className="breadcrumb-link">
+                          {plant.name}
+                        </Link>
+                      </td>
                       <td>{plant.location}</td>
                       <td>{plant.soilMoisture}%</td>
                     </tr>
