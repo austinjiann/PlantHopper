@@ -127,10 +127,10 @@ def main():
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2, cv2.LINE_AA)
 
                     # ===== SERIAL MESSAGE ON ID == 1 =====
-                    if tag_id == 1:
+                    if tag_id == 7:
                         dx_m = float(tvec[0])                 # camera X (meters)
                         pitch_deg = float(rpy_deg[1])         # pitch in degrees
-                        send_cmd_line(dx_m=dx_m, pitch_deg=pitch)
+                        send_cmd_line(dx_m=dx_m, pitch_deg=pitch_deg)
                         
             else:
                 cv2.putText(frame, "Provide --calib to compute pose (rpy/dx/dy).",

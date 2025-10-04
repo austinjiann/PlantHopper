@@ -6,7 +6,7 @@ Servo myServo2;
 
 void setup() {
   // myServo.attach(10); 
-  myServo2.attach(8);
+  myServo2.attach(10);
    // adjust to your servo’s safe range
 
 }
