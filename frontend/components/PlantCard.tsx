@@ -6,11 +6,6 @@ interface PlantCardProps {
   plant: Plant;
 }
 
-const PumpStatusIcon: Record<Plant["pumpStatus"], string> = {
-  idle: "Idle",
-  watering: "Watering",
-  scheduled: "Scheduled"
-};
 
 function formatDistanceLabel(date: string) {
   return formatDistanceToNow(new Date(date), { addSuffix: true });
@@ -53,7 +48,6 @@ export function PlantCard({ plant }: PlantCardProps) {
           </span>
           <span className="meta-label">Pump status</span>
           <p className="secondary-text" style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span aria-hidden>{PumpStatusIcon[plant.pumpStatus]}</span>
             <StatusBadge variant={plant.pumpStatus} />
           </p>
         </div>

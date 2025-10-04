@@ -2,9 +2,16 @@ import { formatDistanceToNow } from "date-fns";
 import { MetricsCard } from "@/components/MetricsCard";
 import { PlantCard } from "@/components/PlantCard";
 import { WateringTimeline } from "@/components/WateringTimeline";
-import { HealthDistribution } from "@/components/HealthDistribution";
 import { StatusBadge } from "@/components/StatusBadge";
-import { plants, summary, wateringTimeline, healthDistribution } from "@/lib/mockData";
+import { plants, summary, wateringTimeline} from "@/lib/mockData";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 
 export default function DashboardPage() {
   const attentionPlants = plants.filter((plant) => plant.health !== "healthy");
@@ -17,30 +24,10 @@ export default function DashboardPage() {
           <div className="header-title">
             <h1>Plant Hopper</h1>
           </div>
-          <div className="header-actions">
-            <button className="button button--primary">
-              Register plant
-            </button>
-          </div>
+
         </div>
-        <div className="filter-bar">
-          <input placeholder="Search by plant name, species, or location" />
-          <select className="filter-select" defaultValue="all">
-            <option value="all">Health: All</option>
-            <option value="healthy">Healthy</option>
-            <option value="warning">Needs attention</option>
-            <option value="critical">Critical</option>
-          </select>
-          <select className="filter-select" defaultValue="all">
-            <option value="all">Zones: All areas</option>
-            <option value="atrium">Atrium</option>
-            <option value="lab">Labs</option>
-            <option value="studio">Studios</option>
-          </select>
-        </div>
-        <p className="secondary-text">
-          Last synced {formatDistanceToNow(new Date(summary.lastSync), { addSuffix: true })}
-        </p>
+        
+
       </header>
 
       <section className="dashboard-grid" aria-label="System summary">
@@ -73,20 +60,19 @@ export default function DashboardPage() {
         />
       </section>
 
-      <section style={{ marginTop: 40, display: "grid", gap: 24, gridTemplateColumns: "1.3fr 1fr" }}>
+      <section style={{ marginTop: 40, display: "grid", gap: 24, gridTemplateColumns: "1.3fr 1fr", alignItems: "start" }}>
         <div>
           <h2 className="section-title">Plant overview</h2>
           <p className="secondary-text">
             Monitor current moisture, upcoming watering, and environment metrics for each plant.
           </p>
           <div className="plant-grid">
-            {plants.map((plant) => (
+            {plants.slice(0, 3).map((plant) => (
               <PlantCard key={plant.id} plant={plant} />
             ))}
           </div>
         </div>
-        <div style={{ display: "grid", gap: 24 }}>
-          <HealthDistribution {...healthDistribution} />
+        <div style={{ display: "grid", gap: 8, rowGap: 8, alignItems: "start", marginTop: 72 }}>
           <div className="card">
             <h3>Attention queue</h3>
             <p className="secondary-text">
