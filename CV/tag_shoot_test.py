@@ -8,15 +8,12 @@ import time
 ser = serial.Serial("/dev/tty.usbserial-A50285BI", 115200, timeout=1, write_timeout=1)
 time.sleep(3)
 
-def send_cmd_line(tag_id: int, found: bool, dx_m: float, pitch_deg: float, shoot: bool):
+def send_cmd_line(dx_m: float, pitch_deg: float):
     # Build: cmd:search;id:num;found:bool;dx:num;pitch:deg;shoot:bool
     line = (
-        f"cmd:SEARCH;"
-        f"id:{tag_id};"
-        f"found:{str(found).lower()};"
+        f"cmd:SHOOT;"
         f"dx:{dx_m:.3f};"
         f"pitch:{int(round(pitch_deg))};"
-        f"shoot:{str(shoot).lower()}\n"
     )
     try:
         print(line)
@@ -133,7 +130,7 @@ def main():
                     if tag_id == 1:
                         dx_m = float(tvec[0])                 # camera X (meters)
                         pitch_deg = float(rpy_deg[1])         # pitch in degrees
-                        send_cmd_line(tag_id=1, found=True, dx_m=dx_m, pitch_deg=pitch_deg, shoot=False)
+                        send_cmd_line(dx_m=dx_m, pitch_deg=pitch)
                         
             else:
                 cv2.putText(frame, "Provide --calib to compute pose (rpy/dx/dy).",
@@ -141,7 +138,6 @@ def main():
         else:
             cv2.putText(frame, "No AprilTags detected", (20, 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
-            send_cmd_line(tag_id=1, found=False, dx_m=0, pitch_deg=0, shoot=False)
 
         cv2.imshow("AprilTag Detector", frame)
         if cv2.waitKey(1) & 0xFF in (ord('q'), ord('Q')):

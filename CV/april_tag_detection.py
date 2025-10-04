@@ -48,8 +48,8 @@ def format_pose_text(rpy_deg, tvec):
 def main():
     ap = argparse.ArgumentParser(description="AprilTag detection (OpenCV)")
     ap.add_argument("--cam", type=int, default=0, help="Camera index (default 0)")
-    ap.add_argument("--width", type=int, default=1280, help="Capture width")
-    ap.add_argument("--height", type=int, default=720, help="Capture height")
+    ap.add_argument("--width", type=int, default=1920, help="Capture width")
+    ap.add_argument("--height", type=int, default=1080, help="Capture height")
     ap.add_argument("--dict", type=str, default="DICT_APRILTAG_36h11",
                     help="Tag dictionary (e.g., DICT_APRILTAG_36h11, DICT_APRILTAG_25h9)")
     ap.add_argument("--tag-size", type=float, default=0.08,
@@ -130,6 +130,23 @@ def main():
         else:
             cv2.putText(frame, "No AprilTags detected", (20, 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
+
+
+        # Intrinsics from your YAML
+        cx, cy = camera_matrix[0,2], camera_matrix[1,2]
+        fx, fy = camera_matrix[0,0], camera_matrix[1,1]
+
+        # Tag pixel center vs principal point
+        c = corners[i].reshape(-1, 2)
+        u, v = c.mean(axis=0)
+
+        z = float(tvec[2])
+        x_from_px = (u - cx) * z / fx  # meters predicted from pixels
+        y_from_px = (v - cy) * z / fy
+
+        print(f"u-cx={u-cx:.1f}px  v-cy={v-cy:.1f}px  "
+            f"tvec=({tvec[0]:.3f},{tvec[1]:.3f},{tvec[2]:.3f})  "
+            f"x_from_px={x_from_px:.3f}  y_from_px={y_from_px:.3f}")
 
         cv2.imshow("AprilTag Detector", frame)
         if cv2.waitKey(1) & 0xFF in (ord('q'), ord('Q')):

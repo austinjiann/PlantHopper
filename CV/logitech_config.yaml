@@ -6,14 +6,12 @@ camera_matrix: !!opencv-matrix
   rows: 3
   cols: 3
   dt: d
-  data: [ 1360.3826195266554, 0.0, 959.5,
-          0.0, 1360.4145837632493, 539.5,
+  data: [ 1385.92, 0.0, 951.982,
+          0.0, 1385.92, 534.084,
           0.0, 0.0, 1.0 ]
 dist_coeffs: !!opencv-matrix
   rows: 1
-  cols: 5
+  cols: 8
   dt: d
-  # Approximate / placeholder distortion; many C920 units have modest distortion.
-  # Replace with real values after calibration.
-  data: [ 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  data: [ 0.117627, -0.248549, 0.0, 0.0, 0.107441, 0.0, 0.0, 0.0 ]
 distortion_model: plumb_bob
