@@ -11,15 +11,15 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/plants/[plantId]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/plants/[plantId]/page.js"
-    ],
     "/plants/[plantId]/not-found": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/plants/[plantId]/not-found.js"
+    ],
+    "/plants/[plantId]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/plants/[plantId]/page.js"
     ]
   }
 }
