@@ -400,7 +400,7 @@ main {
 }
 
 .growth-graph {
-  height: 180px;
+  height: 170px;
   display: grid;
   align-items: stretch;
   justify-items: stretch;

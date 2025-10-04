@@ -60,7 +60,7 @@ export function MoistureBarChart({ plantId = "plant1" }: MoistureBarChartProps) 
     <Card className="py-0" style={{ background: "transparent", border: "none", boxShadow: "none" }}>
       <CardContent className="px-0 py-0">
         <div style={{ width: "100%" }}>
-          <ResponsiveContainer width="100%" height={180} key={`${plantId}:${data.length}`}>
+          <ResponsiveContainer width="100%" height={170} key={`${plantId}:${data.length}`}>
             <LineChart data={data} margin={{ left: 12, right: 12, top: 8, bottom: 16 }}>
               <CartesianGrid vertical={false} stroke="rgba(148,163,184,0.25)" />
               <XAxis
