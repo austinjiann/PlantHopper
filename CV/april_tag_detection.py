@@ -18,6 +18,33 @@ def load_calibration(calib_path: str):
         raise ValueError("Calibration file missing 'camera_matrix' or 'dist_coeffs'.")
     return camera_matrix, dist_coeffs
 
+def rvec_to_euler_xyz(rvec: np.ndarray):
+    """
+    Convert OpenCV Rodrigues rvec to Euler angles (roll, pitch, yaw) in radians,
+    using X (roll) -> Y (pitch) -> Z (yaw) intrinsic rotations (XYZ).
+    """
+    R, _ = cv2.Rodrigues(rvec)
+    sy = np.sqrt(R[0,0]*R[0,0] + R[1,0]*R[1,0])
+    singular = sy < 1e-6
+
+    if not singular:
+        roll  = np.arctan2(R[2,1], R[2,2])     # x
+        pitch = np.arctan2(-R[2,0], sy)        # y
+        yaw   = np.arctan2(R[1,0], R[0,0])     # z
+    else:
+        roll  = np.arctan2(-R[1,2], R[1,1])
+        pitch = np.arctan2(-R[2,0], sy)
+        yaw   = 0.0
+    return roll, pitch, yaw
+
+def format_pose_text(rpy_deg, tvec):
+    r_deg, p_deg, y_deg = rpy_deg
+    dx, dy, dz = tvec
+    return [
+        f"r={r_deg:+.1f}°, p={p_deg:+.1f}°, y={y_deg:+.1f}°",
+        f"dx={dx:+.3f} m, dy={dy:+.3f} m, dz={dz:+.3f} m",
+    ]
+
 def main():
     ap = argparse.ArgumentParser(description="AprilTag detection (OpenCV)")
     ap.add_argument("--cam", type=int, default=0, help="Camera index (default 0)")
@@ -27,7 +54,7 @@ def main():
                     help="Tag dictionary (e.g., DICT_APRILTAG_36h11, DICT_APRILTAG_25h9)")
     ap.add_argument("--tag-size", type=float, default=0.05,
                     help="Tag size in meters (edge length) for pose estimation")
-    ap.add_argument("--calib", type=str, default="",
+    ap.add_argument("--calib", type=str, default="/Users/jliu61/Documents/GitHub/PlantHopper/CV/logitech_config.yaml",
                     help="Path to camera calibration file (YAML/JSON) with camera_matrix & dist_coeffs")
     args = ap.parse_args()
 
@@ -39,7 +66,6 @@ def main():
         raise RuntimeError(f"Could not open camera index {args.cam}")
 
     # ----- Dictionary & Detector -----
-    # Requires opencv-contrib-python
     if not hasattr(cv2, "aruco"):
         raise ImportError("cv2.aruco not found. Install: pip install opencv-contrib-python")
 
@@ -71,19 +97,37 @@ def main():
         corners, ids, _ = detector.detectMarkers(gray)
 
         if ids is not None and len(ids) > 0:
-            # Draw detected boxes and IDs
             cv2.aruco.drawDetectedMarkers(frame, corners, ids)
 
-            # Pose estimation if calibration provided
             if camera_matrix is not None and dist_coeffs is not None:
-                # Estimate pose per marker
                 rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
                     corners, args.tag_size, camera_matrix, dist_coeffs
                 )
-                for rvec, tvec in zip(rvecs, tvecs):
+                for i, (rvec, tvec) in enumerate(zip(rvecs, tvecs)):
+                    # Flatten shapes like (1,3) -> (3,)
+                    rvec = rvec.reshape(-1)
+                    tvec = tvec.reshape(-1)  # [dx, dy, dz] in meters (camera coordinates)
+
+                    # Draw axes
                     cv2.drawFrameAxes(frame, camera_matrix, dist_coeffs, rvec, tvec, args.tag_size * 0.5)
+
+                    # Compute RPY (deg)
+                    roll, pitch, yaw = rvec_to_euler_xyz(rvec)
+                    rpy_deg = np.degrees([roll, pitch, yaw])
+
+                    # Overlay text near the first corner of the marker
+                    c = corners[i].reshape(-1, 2)  # (4,2)
+                    x_text, y_text = int(c[0,0]), int(c[0,1]) - 10
+
+                    lines = [f"id={int(ids[i])}"] + format_pose_text(rpy_deg, tvec)
+                    for k, line in enumerate(lines):
+                        yy = y_text - 20 * k
+                        cv2.putText(frame, line, (x_text, max(yy, 15)),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2, cv2.LINE_AA)
+            else:
+                cv2.putText(frame, "Provide --calib to compute pose (rpy/dx/dy).",
+                            (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,255), 2, cv2.LINE_AA)
         else:
-            # Optional: show hint when nothing detected
             cv2.putText(frame, "No AprilTags detected", (20, 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
 
