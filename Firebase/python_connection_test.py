@@ -7,11 +7,14 @@ import time
 import firebase_admin
 from firebase_admin import credentials, firestore
 
+
 # Global flag for graceful shutdown
 running = True
 
 # Store previous tag states for change detection
 previous_tag_states = {}
+
+
 
 def load_calibration(calib_path: str):
     """
@@ -80,6 +83,13 @@ def firebase_thread(firebase_cred_path):
                         "command": None,
                         "lastWatered": firestore.SERVER_TIMESTAMP
                     })
+
+                    db.collection("moisturedata").document(doc.id).collection("readings").add({
+                        "timestamp": firestore.SERVER_TIMESTAMP,
+                        "moisture": 0.3
+                    })
+
+                    
                 elif data.get("command") == "sweep":
                     print(f"[Firebase] Sweeping {doc.id}!")
                     # TODO: send serial command to Arduino
@@ -88,6 +98,44 @@ def firebase_thread(firebase_cred_path):
                         "command": None,
                         "lastSwept": firestore.SERVER_TIMESTAMP
                     })
+
+                # Basically, we want to 
+                # 1) Get the sensor data from arduino
+                # 2) Determine which plant it belongs to
+                # 3) Update the moisture column for that plant id
+                elif data.get("command") == "sensor":
+                    print("[Firebase] Processing sensor data...")
+
+                    # Example: data might look like {"command": "sensor", "sensorId": "sensor_1", "moisture": 0.3}
+                    sensor_id = data.get("sensorId")
+                    moisture_value = data.get("moisture")
+
+                    if not sensor_id or moisture_value is None:
+                        print("[Error] Missing sensorId or moisture value.")
+                    else:
+                        # Find which plant corresponds to this sensor
+                        plants_ref = db.collection("plants")
+                        query = plants_ref.where("sensorId", "==", sensor_id).stream()
+
+                        found = False
+                        for doc in query:
+                            found = True
+                            print(f"[Firebase] Sensor {sensor_id} → Plant {doc.id}")
+
+                            db.collection("moisturedata").document(doc.id).collection("readings").add({
+                                "timestamp": firestore.SERVER_TIMESTAMP,
+                                "moisture": moisture_value
+                            })
+
+                            # optionally, update the latest moisture reading in plant doc
+                            db.collection("plants").document(doc.id).update({
+                                "latestMoisture": moisture_value,
+                                "lastUpdated": firestore.SERVER_TIMESTAMP
+                            })
+
+                        if not found:
+                            print(f"[Firebase] No plant found for sensor ID {sensor_id}.")
+
 
         doc_ref = db.collection("plants").document("plant1")
         doc_watch = doc_ref.on_snapshot(on_snapshot)
@@ -267,7 +315,7 @@ def main():
     global running
     
     ap = argparse.ArgumentParser(description="AprilTag detection with Firebase listener")
-    ap.add_argument("--cam", type=int, default=4, help="Camera index (default 0)")
+    ap.add_argument("--cam", type=int, default=0, help="Camera index (default 0)")
     ap.add_argument("--width", type=int, default=1280, help="Capture width")
     ap.add_argument("--height", type=int, default=720, help="Capture height")
     ap.add_argument("--dict", type=str, default="DICT_APRILTAG_36h11",
