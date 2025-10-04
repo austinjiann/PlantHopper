@@ -1,10 +1,19 @@
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { format, formatDistanceToNow } from "date-fns";
 import { StatusBadge } from "@/components/StatusBadge";
 import { WaterPlantButton } from "@/components/WaterPlantButton";
 import { wateringTimeline } from "@/lib/mockData";
 import { getPlantIds, getRequiredPlant } from "@/lib/plants";
 import { MoistureBarChart } from "@/components/MoistureBarChart";
+const PlantImageFromFirestore = dynamic(
+  () => import("@/components/PlantImageFromFirestore"),
+  { ssr: false }
+);
+const SpeciesAndTarget = dynamic(
+  () => import("@/components/SpeciesAndTarget"),
+  { ssr: false }
+);
 
 interface PlantDetailPageProps {
   params: {
@@ -26,18 +35,13 @@ export default function PlantDetailPage({ params }: PlantDetailPageProps) {
 
   const upcomingActions = wateringTimeline.filter((item) => item.plantId === plant.id);
 
+
   return (
     <main className="detail-main">
 
       <section className="detail-hero">
         {/* Large visual on the left to mirror the reference */}
-        <div className="detail-image-shell">
-          <div className="detail-image-placeholder">
-            <div className="detail-image-content">
-              <span>Custom plant image</span>
-            </div>
-          </div>
-        </div>
+        <PlantImageFromFirestore plantId={plant.id} />
 
         {/* Right-side stacked content: title + metric chips + cards */}
         <div className="detail-side">
@@ -47,18 +51,10 @@ export default function PlantDetailPage({ params }: PlantDetailPageProps) {
               <span className="detail-id">#{plant.id}</span>
             </div>
             <h1>{plant.name}</h1>
-            <p className="detail-subtitle">
-              {plant.species} • {plant.location}
-            </p>
+            <p className="detail-subtitle">{plant.species} • {plant.location}</p>
             <div className="detail-hero-metrics">
-              <div className="detail-hero-metric">
-                <span className="metric-label">Soil moisture</span>
-                <span className="metric-value">{plant.soilMoisture}%</span>
-              </div>
-              <div className="detail-hero-metric">
-                <span className="metric-label">Target</span>
-                <span className="metric-value">{plant.targetMoisture}%</span>
-              </div>
+              <div className="detail-hero-metric"><span className="metric-label">Soil moisture</span><span className="metric-value">{plant.soilMoisture}%</span></div>
+              <SpeciesAndTarget plantId={plant.id} fallbackTarget={plant.targetMoisture} />
               <div className="detail-hero-metric detail-hero-metric--pump">
                 <span className="metric-label">Pump status</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

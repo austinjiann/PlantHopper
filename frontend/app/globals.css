@@ -234,12 +234,12 @@ main {
 /* Normalize pump row so badge/buttons baseline match the numeric metric values */
 .detail-hero-metric--pump {
   align-self: end;
-  margin-top: 2px; /* subtle nudge down */
+  margin-top: -6px; /* shift up slightly */
 }
 
 /* Lift inline action buttons slightly to align with numeric baselines */
 .detail-hero-metric--pump .water-button {
-  margin-top: -10px;
+  margin-top: -14px; /* lift buttons a touch more */
 }
 
 .metric-label {
@@ -262,10 +262,16 @@ main {
   padding: 12px;
 }
 
+.detail-image-frame {
+  width: 100%;
+  height: 420px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
 .detail-image-placeholder {
   width: 100%;
-  aspect-ratio: 1 / 1;
-  min-height: 520px;
+  height: 420px; /* cap to template allocation */
   border-radius: var(--radius-lg);
   border: 2px dashed rgba(148, 163, 184, 0.35);
   display: flex;
@@ -276,6 +282,15 @@ main {
   font-size: 0.95rem;
   text-align: center;
   padding: 16px;
+}
+
+/* Ensure actual image follows the same sizing as the placeholder */
+.detail-plant-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  display: block;
 }
 
 .detail-image-content {
@@ -307,9 +322,11 @@ main {
 }
 
 .water-button.water-button--inline {
-  padding: 8px 14px;
+  /* Match badge height: badge padding 5px top/bottom + font size ~0.7rem. Aim around 26px total */
+  padding: 5px 12px;
   min-width: auto;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+  line-height: 1; /* tighter height */
 }
 
 .water-button:hover:not(:disabled) {
@@ -400,6 +417,35 @@ main {
 .growth-graph > * {
   width: 100%;
   height: 100%;
+}
+
+/* Species info panel populated from AI */
+.species-info {
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent-strong, #16a34a);
+}
+
+.species-common {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.species-scientific {
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.detail-plant-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
 }
 
 .growth-scale {
@@ -562,6 +608,15 @@ main {
   margin-top: 16px;
 }
 
+.plant-grid--wide {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.plant-card--compact {
+  min-height: 190px;
+}
+
 .plant-card-link {
   display: block;
   color: inherit;
@@ -663,6 +718,15 @@ main {
   border-radius: var(--radius-md);
   border: 2px dashed rgba(148, 163, 184, 0.35);
   background: rgba(236, 253, 245, 0.6);
+}
+
+/* Ensure any img placed inside fills the placeholder exactly */
+.plant-image-thumb img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: var(--radius-md);
 }
 
 .meta-label {

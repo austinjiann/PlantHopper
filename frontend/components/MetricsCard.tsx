@@ -34,12 +34,13 @@ export function MetricsCard({ label, value, description, trend, accent = "green"
               alignItems: "center",
               marginTop: 12,
               fontWeight: 600,
-              color:
-                trend.direction === "up"
-                  ? "var(--accent)"
-                  : trend.direction === "down"
-                  ? "#f87272"
-                  : "var(--text-muted)"
+              color: trend.label.toLowerCase() === "live"
+                ? "#16a34a"
+                : trend.direction === "up"
+                ? "var(--accent)"
+                : trend.direction === "down"
+                ? "#f87272"
+                : "var(--text-muted)"
             }}
           >
             {trend.label}
