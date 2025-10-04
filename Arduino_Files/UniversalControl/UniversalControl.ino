@@ -123,6 +123,6 @@ void loop() {
       if (currTurretPos < 0)   currTurretPos = 0;
       turret.write(convertTurretAngle((int)currTurretPos));
     }
-    pitch.write(convertPitchAngle(cmdPitch));
+    pitch.write(convertPitchAngle(cmdPitch + 20));
   }
 }
