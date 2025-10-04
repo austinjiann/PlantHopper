@@ -7,14 +7,19 @@ Servo pitch;
 Servo turret;
 Servo shooter;
 
-// Sweep config (0..300 turret units)
 const float SWEEP_STEP_UNITS = 1.2;
 const unsigned long SWEEP_PERIOD_MS = 20;
 
-// State
+const int SHOOT_NEUTRAL = 90;        // stop for continuous servo (90 ~ 1500us)
+const int SHOOT_ON      = 180;       // run (flip to 0 if direction is wrong)
+const unsigned long SHOOT_BURST_MS = 5000;  // match your old delay(5000)
+
 double currTurretPos = 150.0;
 int    sweepDir = +1;
 unsigned long lastStepMs = 0;
+
+bool   shootActive = false;          // shooter state machine
+unsigned long shootStartMs = 0;
 
 String cmd = "";
 int    cmdId = 0;
@@ -32,14 +37,26 @@ void setup() {
   shooter.attach(8);
 
   pitch.write(149);
-  shooter.write(90); // neutral for continuous servo (if you’re using it)
+  shooter.write(SHOOT_NEUTRAL); // start stopped
 }
 
 // Map helpers
 int convertTurretAngle(int targetAngle){ return map(targetAngle, 0, 300, 0, 180); }
 int convertPitchAngle(int targetAngle){ return targetAngle + 149; }
 
+void serviceShooterTimer() {
+  if (!shootActive) return;
+  unsigned long now = millis();
+  if (now - shootStartMs >= SHOOT_BURST_MS) {
+    shooter.write(SHOOT_NEUTRAL);    // auto-stop when burst time elapses
+    shootActive = false;
+  }
+}
+
 void loop() {
+  // Service shooter timer EVERY loop so it remains non-blocking
+  serviceShooterTimer();
+
   // Only act when a serial line arrives
   if (!Serial.available()) return;
 
@@ -70,19 +87,17 @@ void loop() {
       cmdDx = s.toFloat();
     }
     if (idx_pitch >= 0) {
-      String s = line.substring(idx_pitch + 6, line.indexOf(';', idx_pitch)); // "pitch:" = 6 chars
+      String s = line.substring(idx_pitch + 6, line.indexOf(';', idx_pitch));
       cmdPitch = s.toInt();
     }
 
     if (cmdFound) {
-      // --- FOUND: do PID align (no sweep) ---
       currTurretPos += cmdDx * kP;
       if (currTurretPos > 300) currTurretPos = 300;
       if (currTurretPos < 0)   currTurretPos = 0;
       turret.write(convertTurretAngle((int)currTurretPos));
       pitch.write(convertPitchAngle(cmdPitch));
     } else {
-      // --- NOT FOUND: advance sweep ONE STEP per received message (non-blocking) ---
       unsigned long now = millis();
       if (now - lastStepMs >= SWEEP_PERIOD_MS) {
         lastStepMs = now;
@@ -93,17 +108,15 @@ void loop() {
 
         turret.write(convertTurretAngle((int)currTurretPos));
       }
-      // keep pitch at requested search angle (or ignore if you prefer fixed search pitch)
-      pitch.write(convertPitchAngle(cmdPitch));
+      pitch.write(convertPitchAngle(cmdPitch));  // keep your search pitch
     }
   }
 
   else if (cmd == "SHOOT") {
-    // Parse pitch & dx for SHOOT
     int pitch_id = line.indexOf("pitch:");
     int idx_dx   = line.indexOf("dx:");
     if (pitch_id >= 0) {
-      String s = line.substring(pitch_id + 6, line.indexOf(';', pitch_id)); // FIX: +6
+      String s = line.substring(pitch_id + 6, line.indexOf(';', pitch_id)); // +6
       cmdPitch = s.toInt();
     }
     if (idx_dx >= 0) {
@@ -112,17 +125,22 @@ void loop() {
     }
 
     if (fabs(cmdDx) < 0.02f) {
-      // fire (example; blocking)
-      shooter.write(180);
-      delay(5000);
-      shooter.write(90);
+      if (!shootActive) {
+        shooter.write(SHOOT_ON);    
+        shootStartMs = millis();
+        shootActive  = true;
+      }
     } else {
-      // keep aligning turret toward target
+      if (shootActive) {
+        shooter.write(SHOOT_NEUTRAL);
+        shootActive = false;
+      }
       currTurretPos += cmdDx * kP;
       if (currTurretPos > 300) currTurretPos = 300;
       if (currTurretPos < 0)   currTurretPos = 0;
       turret.write(convertTurretAngle((int)currTurretPos));
     }
+
     pitch.write(convertPitchAngle(cmdPitch + 20));
   }
 }
