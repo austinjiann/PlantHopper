@@ -52,9 +52,62 @@ def format_pose_text(rpy_deg, tvec):
         f"dx={dx:+.3f} m, dy={dy:+.3f} m, dz={dz:+.3f} m",
     ]
 
-def camera_thread(args):
+def firebase_thread(firebase_cred_path):
     """
-    Thread function for AprilTag detection
+    Thread function for Firebase listener
+    """
+    global running
+    
+    doc_watch = None
+    try:
+        # Initialize Firebase
+        cred = credentials.Certificate(firebase_cred_path)
+        firebase_admin.initialize_app(cred)
+        db = firestore.client()
+        print("[Firebase] Firebase initialized.")
+
+        def on_snapshot(doc_snapshot, changes, read_time):
+            for doc in doc_snapshot:
+                data = doc.to_dict()
+                if data.get("command") == "water":
+                    print(f"[Firebase] Watering {doc.id}!")
+                    # TODO: send serial command to Arduino
+                    # reset command
+                    db.collection("plants").document(doc.id).update({
+                        "command": None,
+                        "lastWatered": firestore.SERVER_TIMESTAMP
+                    })
+                elif data.get("command") == "sweep":
+                    print(f"[Firebase] Sweeping {doc.id}!")
+                    # TODO: send serial command to Arduino
+                    # reset command
+                    db.collection("plants").document(doc.id).update({
+                        "command": None,
+                        "lastSwept": firestore.SERVER_TIMESTAMP
+                    })
+
+        doc_ref = db.collection("plants").document("plant1")
+        doc_watch = doc_ref.on_snapshot(on_snapshot)
+
+        print("[Firebase] Listening for changes...")
+        while running:
+            time.sleep(0.5)
+        
+    except Exception as e:
+        print(f"[Firebase] Error: {e}")
+        running = False
+    
+    finally:
+        if doc_watch is not None:
+            try:
+                doc_watch.unsubscribe()
+            except:
+                pass
+        print("[Firebase] Firebase listener stopped.")
+
+def run_camera(args):
+    """
+    Run AprilTag detection in the main thread (required for OpenCV GUI)
     """
     global running
     
@@ -90,101 +143,84 @@ def camera_thread(args):
             print(f"[Camera] Warning: Could not load calibration: {e}")
 
     print("[Camera] Press Q to quit.")
-    while running:
-        ok, frame = cap.read()
-        if not ok:
-            print("[Camera] Failed to grab frame.")
-            break
-
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        corners, ids, _ = detector.detectMarkers(gray)
-
-        if ids is not None and len(ids) > 0:
-            cv2.aruco.drawDetectedMarkers(frame, corners, ids)
-
-            if camera_matrix is not None and dist_coeffs is not None:
-                rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
-                    corners, args.tag_size, camera_matrix, dist_coeffs
-                )
-                for i, (rvec, tvec) in enumerate(zip(rvecs, tvecs)):
-                    rvec = rvec.reshape(-1)
-                    tvec = tvec.reshape(-1)
-
-                    cv2.drawFrameAxes(frame, camera_matrix, dist_coeffs, rvec, tvec, args.tag_size * 0.5)
-
-                    roll, pitch, yaw = rvec_to_euler_xyz(rvec)
-                    rpy_deg = np.degrees([roll, pitch, yaw])
-
-                    c = corners[i].reshape(-1, 2)
-                    x_text, y_text = int(c[0,0]), int(c[0,1]) - 10
-
-                    lines = [f"id={int(ids[i])}"] + format_pose_text(rpy_deg, tvec)
-                    for k, line in enumerate(lines):
-                        yy = y_text - 20 * k
-                        cv2.putText(frame, line, (x_text, max(yy, 15)),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2, cv2.LINE_AA)
-            else:
-                cv2.putText(frame, "Provide --calib to compute pose (rpy/dx/dy).",
-                            (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,255), 2, cv2.LINE_AA)
-        else:
-            cv2.putText(frame, "No AprilTags detected", (20, 40),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
-
-        cv2.imshow("AprilTag Detector", frame)
-        if cv2.waitKey(1) & 0xFF in (ord('q'), ord('Q')):
-            running = False
-            break
-
-    cap.release()
-    cv2.destroyAllWindows()
-    print("[Camera] Camera thread stopped.")
-
-def firebase_thread(firebase_cred_path):
-    """
-    Thread function for Firebase listener
-    """
-    global running
     
     try:
-        # Initialize Firebase
-        cred = credentials.Certificate(firebase_cred_path)
-        firebase_admin.initialize_app(cred)
-        db = firestore.client()
-        print("[Firebase] Firebase initialized.")
-
-        def on_snapshot(doc_snapshot, changes, read_time):
-            for doc in doc_snapshot:
-                data = doc.to_dict()
-                if data.get("command") == "water":
-                    print(f"[Firebase] Watering {doc.id}!")
-                    # TODO: send serial command to Arduino
-                    # reset command
-                    db.collection("plants").document(doc.id).update({
-                        "command": None,
-                        "lastWatered": firestore.SERVER_TIMESTAMP
-                    })
-                elif data.get("command") == "sweep":
-                    print(f"[Firebase] Sweeping {doc.id}!")
-                    # TODO: send serial command to Arduino
-                    # reset command
-                    db.collection("plants").document(doc.id).update({
-                        "command": None,
-                        "lastSwept": firestore.SERVER_TIMESTAMP
-                    })
-
-        doc_ref = db.collection("plants").document("plant1")
-        doc_watch = doc_ref.on_snapshot(on_snapshot)
-
-        print("[Firebase] Listening for changes...")
         while running:
-            time.sleep(0.5)
-        
-        doc_watch.unsubscribe()
-        print("[Firebase] Firebase listener stopped.")
-        
-    except Exception as e:
-        print(f"[Firebase] Error: {e}")
+            ok, frame = cap.read()
+            if not ok:
+                print("[Camera] Failed to grab frame.")
+                break
+
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            corners, ids, _ = detector.detectMarkers(gray)
+
+            if ids is not None and len(ids) > 0:
+                cv2.aruco.drawDetectedMarkers(frame, corners, ids)
+
+                if camera_matrix is not None and dist_coeffs is not None:
+                    # Use the correct API for newer OpenCV versions
+                    obj_points = np.array([
+                        [-args.tag_size/2, args.tag_size/2, 0],
+                        [args.tag_size/2, args.tag_size/2, 0],
+                        [args.tag_size/2, -args.tag_size/2, 0],
+                        [-args.tag_size/2, -args.tag_size/2, 0]
+                    ], dtype=np.float32)
+                    
+                    rvecs = []
+                    tvecs = []
+                    for corner in corners:
+                        success, rvec, tvec = cv2.solvePnP(
+                            obj_points, corner, camera_matrix, dist_coeffs, 
+                            flags=cv2.SOLVEPNP_IPPE_SQUARE
+                        )
+                        if success:
+                            rvecs.append(rvec)
+                            tvecs.append(tvec)
+                    for i, (rvec, tvec) in enumerate(zip(rvecs, tvecs)):
+                        rvec = rvec.reshape(-1)
+                        tvec = tvec.reshape(-1)
+
+                        cv2.drawFrameAxes(frame, camera_matrix, dist_coeffs, rvec, tvec, args.tag_size * 0.5)
+
+                        roll, pitch, yaw = rvec_to_euler_xyz(rvec)
+                        rpy_deg = np.degrees([roll, pitch, yaw])
+
+                        c = corners[i].reshape(-1, 2)
+                        x_text, y_text = int(c[0,0]), int(c[0,1]) - 10
+
+                        lines = [f"id={int(ids[i])}"] + format_pose_text(rpy_deg, tvec)
+                        for k, line in enumerate(lines):
+                            yy = y_text - 20 * k
+                            cv2.putText(frame, line, (x_text, max(yy, 15)),
+                                        cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2, cv2.LINE_AA)
+                else:
+                    cv2.putText(frame, "Provide --calib to compute pose (rpy/dx/dy).",
+                                (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,255), 2, cv2.LINE_AA)
+            else:
+                cv2.putText(frame, "No AprilTags detected", (20, 40),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
+
+            cv2.imshow("AprilTag Detector", frame)
+            key = cv2.waitKey(1) & 0xFF
+            if key in (ord('q'), ord('Q')):
+                running = False
+                break
+    
+    except KeyboardInterrupt:
+        print("\n[Camera] Keyboard interrupt in camera loop.")
         running = False
+    
+    except Exception as e:
+        print(f"[Camera] Exception occurred: {e}")
+        import traceback
+        traceback.print_exc()
+        running = False
+    
+    finally:
+        # Clean up camera resources
+        cap.release()
+        cv2.destroyAllWindows()
+        print("[Camera] Camera stopped.")
 
 def main():
     global running
@@ -197,7 +233,7 @@ def main():
                     help="Tag dictionary (e.g., DICT_APRILTAG_36h11, DICT_APRILTAG_25h9)")
     ap.add_argument("--tag-size", type=float, default=0.08,
                     help="Tag size in meters (edge length) for pose estimation")
-    ap.add_argument("--calib", type=str, default="/Users/jliu61/Documents/GitHub/PlantHopper/CV/logitech_config.yaml",
+    ap.add_argument("--calib", type=str, default="./Firebase/logitech_config.yaml",
                     help="Path to camera calibration file (YAML/JSON) with camera_matrix & dist_coeffs")
     ap.add_argument("--firebase-cred", type=str, 
                     default="./Firebase/planthopper-2fbc8-firebase-adminsdk-fbsvc-bf21b9e16e.json",
@@ -205,29 +241,24 @@ def main():
     args = ap.parse_args()
 
     print("Starting AprilTag Detection + Firebase Listener")
-    print("Press Q in the camera window or Ctrl+C to stop both threads.\n")
+    print("Press Q in the camera window or Ctrl+C to stop.\n")
 
-    # Create and start threads
-    cam_thread = threading.Thread(target=camera_thread, args=(args,), daemon=True)
+    # Start Firebase listener in background thread
     fb_thread = threading.Thread(target=firebase_thread, args=(args.firebase_cred,), daemon=True)
-
-    cam_thread.start()
     fb_thread.start()
+    
+    # Give Firebase thread a moment to initialize
+    time.sleep(1)
 
+    # Run camera in main thread (required for OpenCV GUI to work properly)
     try:
-        # Wait for threads to complete
-        while running:
-            time.sleep(0.1)
-            # Check if camera thread has ended
-            if not cam_thread.is_alive():
-                running = False
-                break
+        run_camera(args)
     except KeyboardInterrupt:
         print("\n[Main] Keyboard interrupt detected. Stopping...")
         running = False
-
-    # Wait for threads to finish
-    cam_thread.join(timeout=2)
+    
+    # Wait for Firebase thread to finish
+    print("[Main] Waiting for Firebase thread to stop...")
     fb_thread.join(timeout=2)
     
     print("[Main] Program terminated.")
