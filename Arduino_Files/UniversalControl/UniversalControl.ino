@@ -1,15 +1,26 @@
 #include <Servo.h>
+#define kP -40
 
 // Servo myServo;
 Servo pitch;
 Servo turret;
 bool shoot = false;
-double currTurretPos = 0;
+double currTurretPos = 150.0;
 
+String cmd = "";
+int    cmdId = 0;
+bool   cmdFound = false;
+float  cmdDx = 0.0f;
+int    cmdPitch = 0;
+bool   cmdShoot = false;
 
 void setup() {
+  Serial.begin(9600);
+  Serial.setTimeout(5); 
   pitch.attach(9, 1000, 2200); 
   turret.attach(10);
+  pitch.write(149);
+  // turret.write(90);
    // adjust to your servo’s safe range
 
 }
@@ -20,7 +31,7 @@ int convertTurretAngle(int targetAngle){
 
 // it's relative to straight being (0)
 int convertPitchAngle(int targetAngle){
-  return targetAngle - 149;
+  return targetAngle + 149;
 }
 
 void loop() {
@@ -71,7 +82,14 @@ void loop() {
 
   if(idx_found){
     //run PID to align
-    currTurretPos += dx
+    Serial.println("index found");
+    currTurretPos += cmdDx*kP;
+    if(currTurretPos > 300){
+      currTurretPos = 300;
+    }
+    if(currTurretPos < 0){
+      currTurretPos = 0;
+    }
     turret.write(convertTurretAngle(currTurretPos));
     pitch.write(convertPitchAngle(cmdPitch));
   }
