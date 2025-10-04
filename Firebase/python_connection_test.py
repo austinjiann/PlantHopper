@@ -84,12 +84,7 @@ def firebase_thread(firebase_cred_path):
                         "lastWatered": firestore.SERVER_TIMESTAMP
                     })
 
-                    db.collection("moisturedata").document(doc.id).collection("readings").add({
-                        "timestamp": firestore.SERVER_TIMESTAMP,
-                        "moisture": 0.3
-                    })
 
-                    
                 elif data.get("command") == "sweep":
                     print(f"[Firebase] Sweeping {doc.id}!")
                     # TODO: send serial command to Arduino
@@ -106,9 +101,14 @@ def firebase_thread(firebase_cred_path):
                 elif data.get("command") == "sensor":
                     print("[Firebase] Processing sensor data...")
 
+                    db.collection("plants").document(doc.id).update({
+                        "command": None,
+                        "lastScanned": firestore.SERVER_TIMESTAMP
+                    })
+
                     # Example: data might look like {"command": "sensor", "sensorId": "sensor_1", "moisture": 0.3}
                     sensor_id = data.get("sensorId")
-                    moisture_value = data.get("moisture")
+                    moisture_value = data.get("moisturedata")
 
                     if not sensor_id or moisture_value is None:
                         print("[Error] Missing sensorId or moisture value.")
@@ -127,11 +127,6 @@ def firebase_thread(firebase_cred_path):
                                 "moisture": moisture_value
                             })
 
-                            # optionally, update the latest moisture reading in plant doc
-                            db.collection("plants").document(doc.id).update({
-                                "latestMoisture": moisture_value,
-                                "lastUpdated": firestore.SERVER_TIMESTAMP
-                            })
 
                         if not found:
                             print(f"[Firebase] No plant found for sensor ID {sensor_id}.")
