@@ -583,6 +583,7 @@ main {
   padding: 20px;
   box-shadow: var(--shadow-sm);
   transition: transform var(--transition), border-color var(--transition);
+  min-height: 260px; /* normalize card heights so rows align (e.g., Cascade) */
 }
 
 .plant-card:hover {
@@ -593,7 +594,7 @@ main {
 .plant-card-link:hover .plant-card {
   border-color: rgba(34, 197, 94, 0.4);
   box-shadow: var(--shadow-soft);
-  transform: translateY(-2px);
+  transform: none;
 }
 
 .add-plant-card {
@@ -662,6 +663,54 @@ main {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* Compact layout variant for simplified cards */
+.plant-card--compact .plant-meta {
+  grid-template-columns: 1.5fr 1fr; /* image column larger; info column single */
+}
+
+.plant-image-thumb {
+  width: 100%;
+  height: 140px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border: 1px dashed rgba(34, 197, 94, 0.35);
+}
+
+.plant-info {
+  display: grid;
+  grid-gap: 12px;
+  gap: 12px;
+  align-content: start;
+}
+
+.info-row {
+  display: grid;
+  grid-gap: 4px;
+  gap: 4px;
+}
+
+.meta-label--block {
+  display: block;
+}
+
+.meta-subvalue {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.info-row--moisture .meta-label {
+  font-size: 0.75rem; /* smaller so it stays on one line */
+  letter-spacing: 0.02em; /* tighter tracking */
+  white-space: nowrap; /* prevent wrapping to two lines */
+}
+
+.meta-inline-value {
+  font-weight: 700;
+  margin-left: 0;
+  display: block;
+  text-align: left;
 }
 
 .meta-label {
