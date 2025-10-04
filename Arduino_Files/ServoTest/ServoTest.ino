@@ -12,7 +12,7 @@ void loop() {
 
   delay(2000);
 
-  // myServo.write(300);
+  myServo.write(100);
 
-  // delay(2000);
+  delay(2000);
 }

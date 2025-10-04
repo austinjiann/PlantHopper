@@ -52,7 +52,7 @@ def main():
     ap.add_argument("--height", type=int, default=720, help="Capture height")
     ap.add_argument("--dict", type=str, default="DICT_APRILTAG_36h11",
                     help="Tag dictionary (e.g., DICT_APRILTAG_36h11, DICT_APRILTAG_25h9)")
-    ap.add_argument("--tag-size", type=float, default=0.05,
+    ap.add_argument("--tag-size", type=float, default=0.08,
                     help="Tag size in meters (edge length) for pose estimation")
     ap.add_argument("--calib", type=str, default="/Users/jliu61/Documents/GitHub/PlantHopper/CV/logitech_config.yaml",
                     help="Path to camera calibration file (YAML/JSON) with camera_matrix & dist_coeffs")
