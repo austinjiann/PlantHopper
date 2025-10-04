@@ -65,7 +65,7 @@ export default function PlantDetailPage({ params }: PlantDetailPageProps) {
                   <StatusBadge variant={plant.pumpStatus} />
                   {/* Override to Firestore doc id used by your listener/console */}
                   <WaterPlantButton plantId={plant.id} targetDocId="plant1" variant="inline" />
-                  <WaterPlantButton plantId={plant.id} targetDocId="plant1" command="sweep" label="Scan Plants" variant="inline" />
+                  <WaterPlantButton plantId={plant.id} targetDocId="plant1" command="scan" label="Scan Plants" variant="inline" />
                   <WaterPlantButton plantId={plant.id} targetDocId="plant1" command="sensor" label="Get Data" variant="inline" />
                 </div>
               </div>
