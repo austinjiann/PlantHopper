@@ -64,6 +64,24 @@ def _send_cmd_water(arduino: ArduinoController, found: bool, dx_m: float, pitch_
         f"dx:{dx_m:.3f};"
         f"pitch:{int(round(pitch_deg))};\n"
     )
+
+def _send_cmd_track(arduino: ArduinoController, tag_id: int, found: bool, dx_m: float, pitch_deg: float, shoot: bool=False):
+    """
+    Build & send the TRACK command line in the same pattern as tag_pid_test.py:
+    cmd:TRACK;id:num;found:bool;dx:num;pitch:deg;shoot:bool\n
+    """
+    line = (
+        f"cmd:TRACK;"
+        f"id:{int(tag_id)};"
+        f"found:{str(found).lower()};"
+        f"dx:{dx_m:.3f};"
+        f"pitch:{int(round(pitch_deg))};"
+        f"shoot:{str(shoot).lower()}\n"
+    )
+    print(line.strip())
+    ok = _arduino_send_line(arduino, line)
+    if not ok:
+        print("[SERIAL WRITE WARNING] TRACK: Could not find a working write method on ArduinoController.")
     print(line.strip())
     ok = _arduino_send_line(arduino, line)
     if not ok:
@@ -178,13 +196,49 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
                     print(f"[Firebase] ===== WATER COMMAND COMPLETE =====\n")
 
                 #code for tracking a plant
-                elif command == "scan":
-                    print(f"[Firebase] Sweeping {plant_id}!")
-                    shooting_system.arduino.sweep()
+                elif command == "track":
+                    print(f"[Firebase] ===== TRACK COMMAND for {plant_id} =====")
+                    
+                    target_tag_id = plant_tag_mapping.get(plant_id)
+                    if target_tag_id is None:
+                        print(f"[Firebase] Error: No AprilTag mapping for plant {plant_id}")
+                        db.collection("plants").document(plant_id).update({
+                            "command": None,
+                            "trackingSuccess": False,
+                            "error": "No AprilTag mapping found"
+                        })
+                        continue
+
+                    TRACK_SEND_HZ = float(data.get("trackSendHz", 20.0))
+                    TRACK_SECONDS = float(data.get("trackSeconds", 10.0))
+                    DEFAULT_PITCH = float(data.get("trackPitchDeg", 0.0))
+                    dt = 1.0 / max(TRACK_SEND_HZ, 1e-3)
+                    until = time.time() + max(TRACK_SECONDS, 0.5)
+
+                    print(f"[Firebase] Tracking tag {target_tag_id} for {TRACK_SECONDS:.1f}s at {TRACK_SEND_HZ:.1f} Hz.")
+                    sent_any = False
+                    while running and time.time() < until:
+                        with _detection_lock:
+                            pose = latest_detections.get(int(target_tag_id), None)
+
+                        if pose is None:
+                            # No detection: mirror tag_pid_test.py "not found" behavior
+                            _send_cmd_track(shooting_system.arduino, tag_id=int(target_tag_id), found=False,
+                                            dx_m=0.0, pitch_deg=DEFAULT_PITCH, shoot=False)
+                        else:
+                            dx_m = float(pose["tvec"][0])
+                            pitch_deg = float(pose["pitch"])
+                            _send_cmd_track(shooting_system.arduino, tag_id=int(target_tag_id), found=True,
+                                            dx_m=dx_m, pitch_deg=pitch_deg, shoot=False)
+                            sent_any = True
+                        time.sleep(dt)
+
                     db.collection("plants").document(plant_id).update({
                         "command": None,
-                        "lastSwept": firestore.SERVER_TIMESTAMP
+                        "lastTracked": firestore.SERVER_TIMESTAMP,
+                        "trackingSuccess": sent_any
                     })
+                    print(f"[Firebase] ===== TRACK COMMAND COMPLETE =====\n")
 
                 elif command == "sensor":
                     print("[Firebase] Processing sensor data...")
