@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { format, formatDistanceToNow } from "date-fns";
 import { StatusBadge } from "@/components/StatusBadge";
+import { WaterPlantButton } from "@/components/WaterPlantButton";
 import { wateringTimeline } from "@/lib/mockData";
 import { getPlantIds, getRequiredPlant } from "@/lib/plants";
 
@@ -31,7 +32,9 @@ export default function PlantDetailPage({ params }: PlantDetailPageProps) {
         {/* Large visual on the left to mirror the reference */}
         <div className="detail-image-shell">
           <div className="detail-image-placeholder">
-            <span>Custom plant image</span>
+            <div className="detail-image-content">
+              <span>Custom plant image</span>
+            </div>
           </div>
         </div>
 
@@ -55,9 +58,14 @@ export default function PlantDetailPage({ params }: PlantDetailPageProps) {
                 <span className="metric-label">Target</span>
                 <span className="metric-value">{plant.targetMoisture}%</span>
               </div>
-              <div className="detail-hero-metric">
+              <div className="detail-hero-metric detail-hero-metric--pump">
                 <span className="metric-label">Pump status</span>
-                <StatusBadge variant={plant.pumpStatus} />
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <StatusBadge variant={plant.pumpStatus} />
+                  {/* Override to Firestore doc id used by your listener/console */}
+                  <WaterPlantButton plantId={plant.id} targetDocId="plant1" variant="inline" />
+                  <WaterPlantButton plantId={plant.id} targetDocId="plant1" command="sweep" label="Scan Plants" variant="inline" />
+                </div>
               </div>
             </div>
           </div>

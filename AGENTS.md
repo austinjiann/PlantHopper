@@ -1,28 +1,16 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `frontend/` contains the Next.js + TypeScript dashboard. Primary source lives under `frontend/app/`, shared components inside `frontend/components/`, typed definitions in `frontend/types/`, and mock data in `frontend/lib/`.
-- Static styling is centralized in `frontend/app/globals.css`. Add feature-specific styles with lightweight component-scoped CSS-in-JS when possible.
-- Non-frontend prototypes (e.g., `april_tag_detection.py`) stay at the repository root. Keep experimental scripts isolated from the production dashboard.
+The dashboard lives in `frontend/` with Next.js source under `frontend/app/`, reusable UI in `frontend/components/`, shared types in `frontend/types/`, and mock data inside `frontend/lib/`. Repository-level prototypes such as `arduino_connection.py` and `april_tag_detection.py` stay at the root to keep them isolated from the production frontend. Assets and global styles are managed through `frontend/app/globals.css`; prefer component-scoped styling when extending the UI. Add new tests alongside components in `frontend/__tests__/` when they exist.
 
 ## Build, Test, and Development Commands
-- `cd frontend && npm install` — install dependencies for the dashboard.
-- `npm run dev` — start the local development server at `http://localhost:3000` with HMR.
-- `npm run build` — create an optimized production build; run before deployments.
-- `npm run lint` — execute ESLint with Next.js defaults; ensure the working tree is clean afterward.
+Run `cd frontend && npm install` once per environment to install dependencies. Start local development with `npm run dev` for a hot-reloading server at `http://localhost:3000`. Execute `npm run build` before release to ensure a production-ready bundle. Use `npm run lint` to apply the project ESLint + Prettier rules and confirm the tree stays clean.
 
 ## Coding Style & Naming Conventions
-- TypeScript files use strict typing; export typed props/interfaces from `frontend/types/` when shared.
-- Follow React FC patterns with PascalCase for components (e.g., `PlantCard.tsx`), camelCase for variables, kebab-case for CSS class names.
-- Prefer composable components in `frontend/components/`; keep files under ~200 lines with clear sections.
-- Run `npm run lint` prior to pushing. Configure IDEs to format with Prettier defaults (2-space indent) and preserve ASCII.
+TypeScript and React components follow strict typing; export reusable definitions from `frontend/types/`. Components use PascalCase (e.g., `PlantCard.tsx`), variables use camelCase, and CSS classes follow kebab-case. Keep files under about 200 lines by extracting composable pieces. Format with Prettier defaults (2-space indent) and keep files ASCII unless there is already non-ASCII content. Document complex sections with focused inline comments only when necessary.
 
 ## Testing Guidelines
-- Automated tests are not yet implemented. When adding tests, colocate Playwright or Vitest specs under `frontend/__tests__/` mirroring the component directory.
-- Name test files `<Component>.test.tsx` and ensure the suite exercises critical UI states.
-- Update this section once coverage requirements are defined.
+Automated tests are not yet mandatory, but place new suites under `frontend/__tests__/` using filenames like `PlantCard.test.tsx`. Mirror the component directory to keep navigation intuitive. Choose Playwright or Vitest depending on the UI or logic under test, and cover critical visual states or data flows. Note any manual verification in your PR description until automated coverage grows.
 
 ## Commit & Pull Request Guidelines
-- Craft commits around a single concern; use concise, imperative subject lines (e.g., `Add plant card moisture trend sparkline`).
-- Reference related issues in the body when applicable and summarize testing performed.
-- Pull requests should include: scope summary, screenshots or recordings for UI changes, checklist of tests run, and notes on follow-up work.
+Craft commits around a single concern with imperative subjects, for example `Add plant card moisture trend sparkline`. Reference related issues inside the commit body when applicable and list the manual or automated tests you ran. Pull requests should summarize scope, include screenshots or recordings for UI updates, link relevant issues, and note any follow-up tasks so reviewers can plan the next steps.
