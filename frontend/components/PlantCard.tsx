@@ -2,6 +2,7 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { StatusBadge } from "@/components/StatusBadge";
 import type { Plant } from "@/types/plant";
+import { PlantThumb } from "@/components/PlantThumb";
 
 interface PlantCardProps {
   plant: Plant;
@@ -30,12 +31,12 @@ export function PlantCard({ plant }: PlantCardProps) {
 
         <div className="plant-meta">
           <div className="meta-item">
-            <div className="plant-image-thumb" aria-hidden />
+            <PlantThumb plantId={plant.id} />
           </div>
 
           <div className="meta-item">
-            <span className="meta-label">Last measured</span>
-            <span className="secondary-text">{lastMeasuredLabel}</span>
+            <span className="meta-label">Last watered</span>
+            <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>{lastMeasuredLabel}</span>
             <span className="meta-label" style={{ marginTop: 10 }}>Soil moisture</span>
             <span className="meta-value">{plant.soilMoisture}%</span>
             <div className="progress">
