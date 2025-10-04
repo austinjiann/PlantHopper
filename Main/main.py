@@ -90,7 +90,8 @@ def _send_cmd_track(arduino: ArduinoController, tag_id: int, found: bool, dx_m: 
 
 
 def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
-                    cap: cv2.VideoCapture, plant_tag_mapping: dict):
+                    cap: cv2.VideoCapture, plant_tag_mapping: dict, arduino):
+
     """
     Thread function for Firebase listener.
     Handles water, sweep, and sensor commands from Firebase.
@@ -140,8 +141,8 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
 
                     # Configurable behavior (kept simple and local)
                     WATER_SEND_HZ = float(data.get("waterSendHz", 10.0))          # how often to send messages
-                    WATER_SCAN_SECONDS = float(data.get("waterScanSeconds", 15))  # how long to scan before giving up
-                    WATER_FIRE_SECONDS = float(data.get("waterFireSeconds", 8.0)) # how long to send found:true
+                    WATER_SCAN_SECONDS = float(data.get("waterScanSeconds", 12))  # how long to scan before giving up
+                    WATER_FIRE_SECONDS = float(data.get("waterFireSeconds", 5.0)) # how long to send found:true
                     DEFAULT_PITCH = float(data.get("waterPitchDeg", 0.0))         # default pitch when scanning
                     
                     # Phase 1: Send found:false at a steady rate while scanning for the target tag.
@@ -211,7 +212,7 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
                         continue
 
                     TRACK_SEND_HZ = float(data.get("trackSendHz", 20.0))
-                    TRACK_SECONDS = float(data.get("trackSeconds", 15.0))
+                    TRACK_SECONDS = float(data.get("trackSeconds", 10.0))
                     DEFAULT_PITCH = float(data.get("trackPitchDeg", 0.0))
                     dt = 1.0 / max(TRACK_SEND_HZ, 1e-3)
                     until = time.time() + max(TRACK_SECONDS, 0.5)
@@ -241,39 +242,52 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
                     })
                     print(f"[Firebase] ===== TRACK COMMAND COMPLETE =====\n")
 
+
                 elif command == "sensor":
                     print("[Firebase] Processing sensor data...")
-                    
-                    # TODO: Get actual sensor data from Arduino
-                    # For now using placeholder values
-                    sensor_id = data.get("sensorId", 8)
-                    moisture_value = data.get("moisture", 0.9)
 
-                    db.collection("plants").document(plant_id).update({
-                        "command": None,
-                        "lastScanned": firestore.SERVER_TIMESTAMP
-                    })
+                    # Read line from Arduino serial output
+                    line = arduino.readline().decode("utf-8").strip()  # make sure 'arduino' = serial.Serial(...)
+                    print(f"[Serial] {line}")
 
-                    if moisture_value is None:
-                        print("[Firebase] Error: Missing moisture value.")
+                    # Expect: cmd:MOISTURE;id:sensor_3;percent:42.1
+                    if not line.startswith("cmd:MOISTURE"):
+                        print("[Error] Invalid line from Arduino.")
                     else:
-                        # Find which plant corresponds to this sensor
-                        plants_ref = db.collection("plants")
-                        query = plants_ref.where("sensorId", "==", sensor_id).stream()
+                        try:
+                            # Parse fields
+                            parts = line.split(";")
+                            sensor_id = parts[1].split(":")[1]          # e.g. sensor_3
+                            moisture_value = float(parts[2].split(":")[1]) / 100.0  # convert 0–100 → 0–1
 
-                        found = False
-                        for plant_doc in query:
-                            found = True
-                            print(f"[Firebase] Sensor {sensor_id} → Plant {plant_doc.id}")
+                            print(f"[Firebase] Sensor {sensor_id} → {moisture_value:.2f}")
 
-                            # Add moisture reading to subcollection
-                            db.collection("moisturedata").document(plant_doc.id).collection("readings").add({
-                                "timestamp": firestore.SERVER_TIMESTAMP,
-                                "moisture": moisture_value
+                            # Reset command and log timestamp
+                            db.collection("plants").document(plant_id).update({
+                                "command": None,
+                                "lastScanned": firestore.SERVER_TIMESTAMP
                             })
 
-                        if not found:
-                            print(f"[Firebase] No plant found for sensor ID {sensor_id}.")
+                            # Match plant by sensorId
+                            plants_ref = db.collection("plants")
+                            query = plants_ref.where("sensorId", "==", sensor_id).stream()
+
+                            found = False
+                            for plant_doc in query:
+                                found = True
+                                print(f"[Firebase] Sensor {sensor_id} → Plant {plant_doc.id}")
+
+                                db.collection("moisturedata").document(plant_doc.id).collection("readings").add({
+                                    "timestamp": firestore.SERVER_TIMESTAMP,
+                                    "moisture": moisture_value
+                                })
+
+                            if not found:
+                                print(f"[Firebase] No plant found for sensor ID {sensor_id}.")
+
+                        except Exception as e:
+                            print(f"[Error] Failed to parse Arduino data: {e}")
+
 
         # Listen to all plants or specific plant
         doc_ref = db.collection("plants")
@@ -473,9 +487,10 @@ def main():
         # Start Firebase listener in background thread
         fb_thread = threading.Thread(
             target=firebase_thread,
-            args=(args.firebase_cred, shooting_system, cap, plant_tag_mapping),
+            args=(args.firebase_cred, shooting_system, cap, plant_tag_mapping, arduino),
             daemon=True
         )
+
         fb_thread.start()
         
         # Give Firebase thread a moment to initialize
