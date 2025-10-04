@@ -95,7 +95,9 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
                     
                     print(f"[Firebase] ===== WATER COMMAND COMPLETE =====\n")
 
-                elif command == "sweep":
+
+                #code for tracking a plant
+                elif command == "scan":
                     print(f"[Firebase] Sweeping {plant_id}!")
                     shooting_system.arduino.sweep()
                     db.collection("plants").document(plant_id).update({
@@ -287,7 +289,8 @@ def main():
         "plant1": 1,
         "plant2": 2,
         "plant3": 3,
-        "plant7": 7,
+        "plant4": 4,
+        "plant5": 5,
         # Add more mappings as needed
     }
 
