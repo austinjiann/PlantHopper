@@ -1,4 +1,4 @@
-// File: /Users/austinjian/Desktop/PlantHopper/frontend/app/layout.tsx
+// File: /Users/austinjian/Desktop/PlantHopper-1/frontend/app/layout.tsx
 import * as entry from '../../../app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
