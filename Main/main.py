@@ -7,13 +7,12 @@ import numpy as np
 import argparse
 import threading
 import time
-import serial
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-from modules.arduino_controller import ArduinoController
-from modules.apriltag_detector import AprilTagDetector
-from modules.shooting_system import ShootingSystem
+from arduino_controller import ArduinoController
+from apriltag_detector import AprilTagDetector
+from shooting_system import ShootingSystem
 
 
 # Global flag for graceful shutdown
@@ -23,8 +22,18 @@ running = True
 previous_tag_states = {}
 
 
-def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem, cap: cv2.VideoCapture, plant_tag_mapping: dict):
-
+def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
+                    cap: cv2.VideoCapture, plant_tag_mapping: dict):
+    """
+    Thread function for Firebase listener.
+    Handles water, sweep, and sensor commands from Firebase.
+    
+    Args:
+        firebase_cred_path: Path to Firebase credentials JSON
+        shooting_system: ShootingSystem instance for executing actions
+        cap: Video capture object (shared with main thread)
+        plant_tag_mapping: Dict mapping plant IDs to AprilTag IDs
+    """
     global running
     
     doc_watch = None
@@ -36,10 +45,14 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem, ca
         print("[Firebase] Firebase initialized.")
 
         def on_snapshot(doc_snapshot, changes, read_time):
+            """Handle Firebase document changes."""
             for doc in doc_snapshot:
                 data = doc.to_dict()
                 plant_id = doc.id
                 command = data.get("command")
+                
+                if not command:
+                    continue  # Skip if no command
                 
                 if command == "water":
                     print(f"\n[Firebase] ===== WATER COMMAND for {plant_id} =====")
@@ -53,7 +66,7 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem, ca
                             "command": None,
                             "error": "No AprilTag mapping found"
                         })
-                        return
+                        continue
                     
                     print(f"[Firebase] Target AprilTag ID: {target_tag_id}")
                     
@@ -125,7 +138,7 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem, ca
                             print(f"[Firebase] No plant found for sensor ID {sensor_id}.")
 
         # Listen to all plants or specific plant
-        doc_ref = db.collection("plants").document("plant1")
+        doc_ref = db.collection("plants")
         doc_watch = doc_ref.on_snapshot(on_snapshot)
 
         print("[Firebase] Listening for changes...")
@@ -274,6 +287,7 @@ def main():
         "plant1": 1,
         "plant2": 2,
         "plant3": 3,
+        "plant7": 7,
         # Add more mappings as needed
     }
 

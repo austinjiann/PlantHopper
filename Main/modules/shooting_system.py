@@ -1,5 +1,3 @@
-
-
 """
 Shooting system for PlantHopper.
 Coordinates sweep, search, and shoot operations.
@@ -53,9 +51,17 @@ class ShootingSystem:
             pose = detections[target_tag_id]
             print(f"[ShootingSystem] Target tag {target_tag_id} found at "
                   f"position ({pose.tvec[0]:.3f}, {pose.tvec[1]:.3f}, {pose.tvec[2]:.3f})")
+            
+            # Send search command to Arduino for PID alignment
+            dx_m = float(pose.tvec[0])
+            pitch_deg = float(pose.pitch)
+            self.arduino.search(target_tag_id, True, dx_m, pitch_deg, False)
+            
             return pose
         else:
             print(f"[ShootingSystem] Target tag {target_tag_id} not found")
+            # Send search command indicating tag not found
+            self.arduino.search(target_tag_id, False, 0.0, 0, False)
             return None
     
     def shoot_at_tag(self, pose: TagPose) -> bool:
