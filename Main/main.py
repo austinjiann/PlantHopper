@@ -64,6 +64,11 @@ def _send_cmd_water(arduino: ArduinoController, found: bool, dx_m: float, pitch_
         f"dx:{dx_m:.3f};"
         f"pitch:{int(round(pitch_deg))};\n"
     )
+    print(line.strip())
+    ok = _arduino_send_line(arduino, line)
+    if not ok:
+        print("[SERIAL WRITE WARNING] Could not find a working write method on ArduinoController.")
+
 
 def _send_cmd_track(arduino: ArduinoController, tag_id: int, found: bool, dx_m: float, pitch_deg: float, shoot: bool=False):
     """
@@ -82,10 +87,6 @@ def _send_cmd_track(arduino: ArduinoController, tag_id: int, found: bool, dx_m: 
     ok = _arduino_send_line(arduino, line)
     if not ok:
         print("[SERIAL WRITE WARNING] TRACK: Could not find a working write method on ArduinoController.")
-    print(line.strip())
-    ok = _arduino_send_line(arduino, line)
-    if not ok:
-        print("[SERIAL WRITE WARNING] Could not find a working write method on ArduinoController.")
 
 
 def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
@@ -140,7 +141,7 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
                     # Configurable behavior (kept simple and local)
                     WATER_SEND_HZ = float(data.get("waterSendHz", 10.0))          # how often to send messages
                     WATER_SCAN_SECONDS = float(data.get("waterScanSeconds", 12))  # how long to scan before giving up
-                    WATER_FIRE_SECONDS = float(data.get("waterFireSeconds", 1.0)) # how long to send found:true
+                    WATER_FIRE_SECONDS = float(data.get("waterFireSeconds", 5.0)) # how long to send found:true
                     DEFAULT_PITCH = float(data.get("waterPitchDeg", 0.0))         # default pitch when scanning
                     
                     # Phase 1: Send found:false at a steady rate while scanning for the target tag.
