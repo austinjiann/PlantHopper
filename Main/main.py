@@ -21,6 +21,54 @@ running = True
 # Store previous tag states for change detection (for camera display)
 previous_tag_states = {}
 
+# Shared (thread-safe) latest detections so the Firebase thread can read them
+_detection_lock = threading.Lock()
+# Map[int tag_id] -> {"tvec": np.ndarray shape(3,), "roll": float, "pitch": float, "yaw": float, "distance": float}
+latest_detections = {}
+
+def _arduino_send_line(arduino: ArduinoController, line: str) -> bool:
+    """
+    Best-effort writer that tries common attributes/methods without
+    changing ArduinoController's API.
+    """
+    try:
+        # Common: a .ser (pyserial) object
+        ser = getattr(arduino, "ser", None) or getattr(arduino, "serial", None)
+        if ser is not None:
+            ser.write(line.encode())
+            return True
+    except Exception:
+        pass
+
+    # Try a few common convenience methods if they exist
+    for meth in ("write_line", "write", "send_line", "send"):
+        fn = getattr(arduino, meth, None)
+        if callable(fn):
+            try:
+                fn(line)
+                return True
+            except Exception:
+                continue
+
+    return False
+
+
+def _send_cmd_water(arduino: ArduinoController, found: bool, dx_m: float, pitch_deg: float):
+    """
+    Build & send the WATER command line in the same pattern as tag_shoot_test.py:
+    cmd:WATER;found:bool;dx:num;pitch:deg;\n
+    """
+    line = (
+        f"cmd:WATER;"
+        f"found:{str(found).lower()};"
+        f"dx:{dx_m:.3f};"
+        f"pitch:{int(round(pitch_deg))};\n"
+    )
+    print(line.strip())
+    ok = _arduino_send_line(arduino, line)
+    if not ok:
+        print("[SERIAL WRITE WARNING] Could not find a working write method on ArduinoController.")
+
 
 def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
                     cap: cv2.VideoCapture, plant_tag_mapping: dict):
@@ -64,14 +112,53 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
                         print(f"[Firebase] Error: No AprilTag mapping for plant {plant_id}")
                         db.collection("plants").document(plant_id).update({
                             "command": None,
+                            "wateringSuccess": False,
                             "error": "No AprilTag mapping found"
                         })
                         continue
                     
                     print(f"[Firebase] Target AprilTag ID: {target_tag_id}")
+
+                    # Configurable behavior (kept simple and local)
+                    WATER_SEND_HZ = float(data.get("waterSendHz", 10.0))          # how often to send messages
+                    WATER_SCAN_SECONDS = float(data.get("waterScanSeconds", 12))  # how long to scan before giving up
+                    WATER_FIRE_SECONDS = float(data.get("waterFireSeconds", 1.0)) # how long to send found:true
+                    DEFAULT_PITCH = float(data.get("waterPitchDeg", 0.0))         # default pitch when scanning
                     
-                    #TODO: continuously loop and print false found serials (so the turret will continue scanning) and then run shoot once
+                    # Phase 1: Send found:false at a steady rate while scanning for the target tag.
+                    # Phase 2: When target tag is detected in latest_detections, send found:true for WATER_FIRE_SECONDS.
                     
+                    success = False
+                    dt = 1.0 / max(WATER_SEND_HZ, 1e-3)
+                    scan_deadline = time.time() + max(WATER_SCAN_SECONDS, 0.5)
+                    last_pitch_deg = DEFAULT_PITCH
+
+                    print(f"[Firebase] Starting scan loop for up to {WATER_SCAN_SECONDS:.1f}s at {WATER_SEND_HZ:.1f} Hz.")
+                    while running and time.time() < scan_deadline:
+                        # Read the most recent detection of the target (if any)
+                        with _detection_lock:
+                            pose = latest_detections.get(int(target_tag_id), None)
+
+                        if pose is not None:
+                            # We have the tag -> begin firing phase
+                            success = True
+                            fire_until = time.time() + WATER_FIRE_SECONDS
+                            print(f"[Firebase] Target detected. Entering FIRE phase for {WATER_FIRE_SECONDS:.1f}s.")
+                            while running and time.time() < fire_until:
+                                # Use freshest data each iteration
+                                with _detection_lock:
+                                    pose_now = latest_detections.get(int(target_tag_id), pose)
+                                dx_m = float(pose_now["tvec"][0])
+                                pitch_deg = float(pose_now["pitch"])
+                                last_pitch_deg = pitch_deg
+                                _send_cmd_water(shooting_system.arduino, True, dx_m, pitch_deg)
+                                time.sleep(dt)
+                            break  # finished fire phase
+                        else:
+                            # Still scanning -> send found:false using last_pitch_deg
+                            _send_cmd_water(shooting_system.arduino, False, 0.0, last_pitch_deg)
+                            time.sleep(dt)
+
                     # Update Firebase with result
                     if success:
                         print(f"[Firebase] Successfully watered {plant_id}")
@@ -85,7 +172,7 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
                         db.collection("plants").document(plant_id).update({
                             "command": None,
                             "wateringSuccess": False,
-                            "error": "Target AprilTag not found after 3 sweep cycles"
+                            "error": "Target AprilTag not found within scan window"
                         })
                     
                     print(f"[Firebase] ===== WATER COMMAND COMPLETE =====\n")
@@ -165,7 +252,7 @@ def run_camera(args, shooting_system: ShootingSystem, cap: cv2.VideoCapture):
         shooting_system: ShootingSystem instance
         cap: Video capture object (shared with Firebase thread)
     """
-    global running, previous_tag_states
+    global running, previous_tag_states, latest_detections
     
     detector = shooting_system.detector
     
@@ -185,14 +272,27 @@ def run_camera(args, shooting_system: ShootingSystem, cap: cv2.VideoCapture):
             # Detect tags
             detections = detector.detect_tags(frame)
 
+            # Clear & repopulate the shared detection snapshot for this frame
+            with _detection_lock:
+                latest_detections.clear()
+
             if detections:
                 # Draw detections on frame
                 frame = detector.draw_detections(frame, detections)
                 
                 # Check for significant changes (for console output)
                 for tag_id, pose in detections.items():
+                    # Update the shared snapshot (pose.pitch expected in degrees from our detector class)
+                    with _detection_lock:
+                        latest_detections[int(tag_id)] = {
+                            "tvec": pose.tvec.copy(),
+                            "roll": float(pose.roll),
+                            "pitch": float(pose.pitch),
+                            "yaw": float(pose.yaw),
+                            "distance": float(pose.distance),
+                        }
+
                     should_print = False
-                    
                     if tag_id not in previous_tag_states:
                         should_print = True
                         print(f"\n[Camera] New tag detected: ID {tag_id}")
