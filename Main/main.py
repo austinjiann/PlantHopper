@@ -70,12 +70,7 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
                     
                     print(f"[Firebase] Target AprilTag ID: {target_tag_id}")
                     
-                    # Execute 3 cycles of sweep and shoot
-                    success = shooting_system.sweep_search_shoot_cycle(
-                        target_tag_id=target_tag_id,
-                        cap=cap,
-                        max_cycles=3
-                    )
+                    #TODO: continuously loop and print false found serials (so the turret will continue scanning) and then run shoot once
                     
                     # Update Firebase with result
                     if success:
@@ -95,7 +90,7 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
                     
                     print(f"[Firebase] ===== WATER COMMAND COMPLETE =====\n")
 
-                elif command == "sweep":
+                elif command == "track":
                     print(f"[Firebase] Sweeping {plant_id}!")
                     shooting_system.arduino.sweep()
                     db.collection("plants").document(plant_id).update({

@@ -5,22 +5,23 @@ from pathlib import Path
 import serial
 import time
 
+# --- serial setup unchanged ---
 ser = serial.Serial("/dev/tty.usbserial-A50285BI", 115200, timeout=1, write_timeout=1)
 time.sleep(3)
 
-def send_cmd_line(dx_m: float, pitch_deg: float):
-    # Build: cmd:search;id:num;found:bool;dx:num;pitch:deg;shoot:bool
+# --- MINOR CHANGE: include 'found' + newline so Arduino can parse WATER properly ---
+def send_cmd_line(found: bool, dx_m: float, pitch_deg: float):
+    # Build: cmd:WATER;found:bool;dx:num;pitch:deg;
     line = (
-        f"cmd:SHOOT;"
+        f"cmd:WATER;"
+        f"found:{str(found).lower()};"
         f"dx:{dx_m:.3f};"
-        f"pitch:{int(round(pitch_deg))};"
+        f"pitch:{int(round(pitch_deg))};\n"
     )
     try:
-        print(line)
+        print(line.strip())
         ser.write(line.encode())
-        # time.sleep(0.3)
     except Exception as e:
-        # Non-fatal: print once per issue if needed
         print(f"[SERIAL WRITE ERROR] {e}")
 
 def load_calibration(calib_path: str):
@@ -90,6 +91,9 @@ def main():
         camera_matrix, dist_coeffs = load_calibration(args.calib)
         print("Loaded calibration.")
 
+    # --- keep last known pitch so WATER can keep a reasonable pitch while sweeping ---
+    last_pitch_deg = 0.0
+
     print("Press Q to quit.")
     while True:
         ok, frame = cap.read()
@@ -99,6 +103,11 @@ def main():
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         corners, ids, _ = detector.detectMarkers(gray)
+
+        # Defaults for this frame
+        found = False
+        dx_m = 0.0
+        pitch_deg = last_pitch_deg
 
         if ids is not None and len(ids) > 0:
             cv2.aruco.drawDetectedMarkers(frame, corners, ids)
@@ -126,18 +135,27 @@ def main():
                         cv2.putText(frame, line, (x_text, max(yy, 15)),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2, cv2.LINE_AA)
 
-                    # ===== SERIAL MESSAGE ON ID == 1 =====
+                    # ===== SERIAL MESSAGE ON ID == 7 (unchanged placement, just adds 'found') =====
                     if tag_id == 7:
                         dx_m = float(tvec[0])                 # camera X (meters)
                         pitch_deg = float(rpy_deg[1])         # pitch in degrees
-                        send_cmd_line(dx_m=dx_m, pitch_deg=pitch_deg)
-                        
+                        found = True
+                        last_pitch_deg = pitch_deg            # remember for sweep frames
+                        # Send when we see the target
+                        send_cmd_line(found=found, dx_m=dx_m, pitch_deg=pitch_deg)
+                        break  # stop after first match of target id
+
             else:
                 cv2.putText(frame, "Provide --calib to compute pose (rpy/dx/dy).",
                             (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,255), 2, cv2.LINE_AA)
         else:
             cv2.putText(frame, "No AprilTags detected", (20, 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
+
+        # --- MINOR ADD: if we didn't send above (not found), send a SWEEP-driving line now ---
+        if not found:
+            # dx stays 0.0 so your Arduino sweeps; pitch uses last seen to keep search elevation
+            send_cmd_line(found=False, dx_m=0.0, pitch_deg=pitch_deg)
 
         cv2.imshow("AprilTag Detector", frame)
         if cv2.waitKey(1) & 0xFF in (ord('q'), ord('Q')):
