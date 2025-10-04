@@ -65,7 +65,7 @@ def main():
     ap.add_argument("--width", type=int, default=1920)
     ap.add_argument("--height", type=int, default=1080)
     ap.add_argument("--dict", type=str, default="DICT_APRILTAG_36h11")
-    ap.add_argument("--tag-size", type=float, default=0.08)
+    ap.add_argument("--tag-size", type=float, default=0.072)
     ap.add_argument("--calib", type=str, default="/Users/jliu61/Documents/GitHub/PlantHopper/CV/logitech_config.yaml")
     args = ap.parse_args()
 
