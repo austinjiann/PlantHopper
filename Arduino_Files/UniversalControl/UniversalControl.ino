@@ -275,7 +275,7 @@ void loop() {
     // pitch_deg = 90 - atan( 8cm / dz_cm ); uses dz from Python (meters -> cm)
     float dz_cm = cmdDz * 100.0f + 4;
     if (dz_cm < 0.2f) dz_cm = 0.2f;                 // avoid div-by-zero / tiny dz
-    float pitch_rad = atanf(4.0f / dz_cm);          // your tuned constant (change to 8.0f if desired)
+    float pitch_rad = atanf(5.5f / dz_cm);          // your tuned constant (change to 8.0f if desired)
     float pitch_deg = -(pitch_rad * 57.2958f); // rad->deg
 
     int servoDeg = (int)roundf(pitch_deg);
