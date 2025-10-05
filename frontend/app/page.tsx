@@ -35,7 +35,7 @@ export default function DashboardPage() {
       <DashboardSummary />
 
       <section style={{ marginTop: 40 }}>
-        <h2 className="section-title">Plant overview</h2>
+        <h2 className="section-title">Plant Overview</h2>
         <div className="plant-grid plant-grid--wide">
           {plants.slice(0, 6).map((plant) => (
             <PlantCard key={plant.id} plant={plant} />
