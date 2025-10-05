@@ -39,16 +39,16 @@ export function PlantThumb({ plantId }: Props) {
     return () => unsub();
   }, [plantId]);
 
-  return url ? (
+  const fallbackSrc = `/${plantId}.png`;
+
+  return (
     <div className="plant-image-thumb" style={{ border: "none", background: "transparent", overflow: "hidden" }}>
       <img
-        src={url}
+        src={url ?? fallbackSrc}
         alt="Plant"
         style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", borderRadius: 12 }}
       />
     </div>
-  ) : (
-    <div className="plant-image-thumb" aria-hidden />
   );
 }
 

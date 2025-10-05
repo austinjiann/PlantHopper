@@ -15,7 +15,8 @@ export const plants: Plant[] = [
     pumpStatus: "scheduled",
     temperature: 23,
     humidity: 56,
-    moistureHistory: [65, 63, 60, 58, 57, 60, 62]
+    moistureHistory: [65, 63, 60, 58, 57, 60, 62],
+    wateringFrequency: "Every 7-10 days"
   },
   {
     id: "plant2",
@@ -31,7 +32,8 @@ export const plants: Plant[] = [
     pumpStatus: "watering",
     temperature: 22,
     humidity: 68,
-    moistureHistory: [48, 45, 42, 52, 55, 57, 59]
+    moistureHistory: [48, 45, 42, 52, 55, 57, 59],
+    wateringFrequency: "Every 2-3 days"
   },
   {
     id: "plant3",
@@ -47,7 +49,8 @@ export const plants: Plant[] = [
     pumpStatus: "idle",
     temperature: 25,
     humidity: 49,
-    moistureHistory: [80, 78, 76, 75, 70, 68, 65]
+    moistureHistory: [80, 78, 76, 75, 70, 68, 65],
+    wateringFrequency: "Weekly"
   },
   {
     id: "plant4",
@@ -63,7 +66,8 @@ export const plants: Plant[] = [
     pumpStatus: "scheduled",
     temperature: 26,
     humidity: 35,
-    moistureHistory: [32, 35, 40, 45, 38, 34, 33]
+    moistureHistory: [32, 35, 40, 45, 38, 34, 33],
+    wateringFrequency: "Every 2 weeks"
   },
   {
     id: "plant5",
@@ -79,7 +83,8 @@ export const plants: Plant[] = [
     pumpStatus: "watering",
     temperature: 24,
     humidity: 60,
-    moistureHistory: [40, 42, 39, 38, 44, 48, 52]
+    moistureHistory: [40, 42, 39, 38, 44, 48, 52],
+    wateringFrequency: "Every 5-7 days"
   }
 ];
 
