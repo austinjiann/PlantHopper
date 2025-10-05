@@ -276,7 +276,7 @@ void loop() {
     float dz_cm = cmdDz * 100.0f + 4;
     if (dz_cm < 0.2f) dz_cm = 0.2f;                 // avoid div-by-zero / tiny dz
     float pitch_rad = atanf(4.0f / dz_cm);          // your tuned constant (change to 8.0f if desired)
-    float pitch_deg = -(90.0f - (pitch_rad * 57.2958f)); // rad->deg
+    float pitch_deg = -(pitch_rad * 57.2958f); // rad->deg
 
     int servoDeg = (int)roundf(pitch_deg);
     if (servoDeg < -22) servoDeg = -22;
