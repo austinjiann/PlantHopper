@@ -4,7 +4,7 @@ import * as React from "react";
 import { MetricsCard } from "@/components/MetricsCard";
 import { plants as mockPlants } from "@/lib/mockData";
 import { db } from "@/lib/firebase/client";
-import { collection, doc, getDocs, limit, orderBy, query } from "firebase/firestore";
+import { collection, limit, onSnapshot, orderBy, query, getDocs } from "firebase/firestore";
 
 type LatestSnapshot = {
   plantId: string;
@@ -13,23 +13,15 @@ type LatestSnapshot = {
   targetMoisture: number | null;
 };
 
-async function fetchLatestMoisture(plantId: string): Promise<{ moisture: number | null; timestampMs: number | null }> {
-  try {
-    const readingsRef = collection(db, "moisturedata", plantId, "readings");
-    const q = query(readingsRef, orderBy("timestamp", "desc"), limit(1));
-    const snap = await getDocs(q);
-    if (snap.empty) return { moisture: null, timestampMs: null };
-    const d = snap.docs[0].data() as any;
-    const ts = d?.timestamp;
-    const date = typeof ts?.toDate === "function" ? ts.toDate() : new Date(ts?.seconds ? ts.seconds * 1000 : ts);
-    let numeric = d?.moisture;
-    if (typeof numeric === "string") numeric = parseFloat(numeric.replace(/%/g, ""));
-    if (Number.isFinite(numeric) && numeric <= 1.5) numeric = Number(numeric) * 100;
-    const moisture = Number.isFinite(numeric) ? Math.max(0, Math.min(100, Number(numeric))) : null;
-    return { moisture, timestampMs: Number.isFinite(date?.getTime?.()) ? date.getTime() : null };
-  } catch {
-    return { moisture: null, timestampMs: null };
-  }
+// Utility: parse a single reading row into normalized percentage and epoch ms
+function parseReading(row: any): { moisture: number | null; timestampMs: number | null } {
+  const ts = row?.timestamp;
+  const date = typeof ts?.toDate === "function" ? ts.toDate() : new Date(ts?.seconds ? ts.seconds * 1000 : ts);
+  let numeric = row?.moisture;
+  if (typeof numeric === "string") numeric = parseFloat(numeric.replace(/%/g, ""));
+  if (Number.isFinite(numeric) && numeric <= 1.5) numeric = Number(numeric) * 100; // convert 0-1 to 0-100
+  const moisture = Number.isFinite(numeric) ? Math.max(0, Math.min(100, Number(numeric))) : null;
+  return { moisture, timestampMs: Number.isFinite(date?.getTime?.()) ? date.getTime() : null };
 }
 
 async function fetchTargetMoisture(plantId: string): Promise<number | null> {
@@ -56,40 +48,58 @@ export function DashboardSummary() {
 
   React.useEffect(() => {
     const plantIds = mockPlants.map((p) => p.id);
-    (async () => {
-      const latest: LatestSnapshot[] = await Promise.all(
-        plantIds.map(async (id) => {
-          const [{ moisture, timestampMs }, targetMoisture] = await Promise.all([
-            fetchLatestMoisture(id),
-            fetchTargetMoisture(id),
-          ]);
-          return { plantId: id, moisture, timestampMs, targetMoisture };
-        })
-      );
+    const latestById: Record<string, LatestSnapshot> = Object.create(null);
 
+    const recompute = () => {
       const now = Date.now();
       const dayMs = 24 * 60 * 60 * 1000;
-      const withReadings = latest.filter((l) => l.timestampMs !== null);
-      const active = withReadings.filter((l) => (now - (l.timestampMs as number)) <= dayMs).length;
-      // Average uses whichever moisture we can resolve (latest Firestore or fallback mock)
+      const latest = plantIds.map((id) => latestById[id]).filter(Boolean) as LatestSnapshot[];
+      const active = latest.filter((l) => l?.timestampMs && (now - (l.timestampMs as number)) <= dayMs).length;
       const withMoisture = plantIds.map((id) => {
-        const row = latest.find((l) => l.plantId === id);
+        const row = latestById[id];
         const fallbackMoist = mockPlants.find((p) => p.id === id)?.soilMoisture ?? null;
         const moisture = (row?.moisture ?? null) ?? (typeof fallbackMoist === "number" ? fallbackMoist : null);
         const target = row?.targetMoisture ?? (mockPlants.find((p) => p.id === id)?.targetMoisture ?? null);
         return { moisture, target };
       });
       const present = withMoisture.filter((m) => typeof m.moisture === "number");
-      const avg = present.length
-        ? Math.round(present.reduce((sum, m) => sum + (m.moisture as number), 0) / present.length)
-        : 0;
-      // Needs attention count should match cards; use current plant health from mock data
+      const avg = present.length ? Math.round(present.reduce((sum, m) => sum + (m.moisture as number), 0) / present.length) : 0;
       const attention = mockPlants.filter((p) => p.health !== "healthy").length;
       const total = plantIds.length || 1;
       const uptimePct = Math.round((active / total) * 100);
-
       setStats({ activePlants: active, needsAttention: attention, averageMoisture: avg, uptime: uptimePct });
+    };
+
+    // Seed targets (from images) once, in the background
+    (async () => {
+      const targets = await Promise.all(plantIds.map((id) => fetchTargetMoisture(id)));
+      targets.forEach((tm, i) => {
+        const id = plantIds[i];
+        latestById[id] = { plantId: id, moisture: latestById[id]?.moisture ?? null, timestampMs: latestById[id]?.timestampMs ?? null, targetMoisture: tm };
+      });
+      recompute();
     })();
+
+    // Live listeners for each plant's latest reading
+    const unsubs = plantIds.map((id) => {
+      const readingsRef = collection(db, "moisturedata", id, "readings");
+      const q = query(readingsRef, orderBy("timestamp", "desc"), limit(1));
+      return onSnapshot(q, (snap) => {
+        if (!snap.empty) {
+          const row = snap.docs[0].data();
+          const parsed = parseReading(row);
+          latestById[id] = {
+            plantId: id,
+            moisture: parsed.moisture,
+            timestampMs: parsed.timestampMs,
+            targetMoisture: latestById[id]?.targetMoisture ?? null,
+          };
+          recompute();
+        }
+      });
+    });
+
+    return () => unsubs.forEach((u) => u());
   }, []);
 
   return (
