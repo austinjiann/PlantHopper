@@ -196,9 +196,9 @@ def firebase_thread(firebase_cred_path: str, shooting_system: ShootingSystem,
                     print(f"[Firebase] Target AprilTag ID: {target_tag_id}")
 
                     # Configurable behavior (kept simple and local)
-                    WATER_SEND_HZ = float(data.get("waterSendHz", 10.0))          # how often to send messages
-                    WATER_SCAN_SECONDS = float(data.get("waterScanSeconds", 12))  # how long to scan before giving up
-                    WATER_FIRE_SECONDS = float(data.get("waterFireSeconds", 1.0)) # how long to send found:true
+                    WATER_SEND_HZ = float(data.get("waterSendHz", 10.0))         # how often to send messages
+                    WATER_SCAN_SECONDS = float(data.get("waterScanSeconds", 15))  # how long to scan before giving up
+                    WATER_FIRE_SECONDS = float(data.get("waterFireSeconds", 15.0)) # how long to send found:true
                     DEFAULT_PITCH = float(data.get("waterPitchDeg", 0.0))         # default pitch when scanning
                     
                     # Phase 1: Send found:false at a steady rate while scanning for the target tag.
