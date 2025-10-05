@@ -21,6 +21,8 @@ const int NUM_SENSORS = sizeof(sensors) / sizeof(sensors[0]);
 const unsigned long SAMPLE_PERIOD_MS = 2000;
 unsigned long lastSampleMs = 0;
 
+//179 is lowest
+
 // --- helpers ---
 int readAveraged(uint8_t pin, uint8_t n = 5) {
   long acc = 0;
