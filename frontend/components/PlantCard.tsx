@@ -42,6 +42,8 @@ export function PlantCard({ plant }: PlantCardProps) {
             <div className="progress">
               <span style={{ width: `${Math.min(plant.soilMoisture, 100)}%` }} />
             </div>
+            <span className="meta-label" style={{ marginTop: 8 }}>Watering frequency</span>
+            <span className="meta-value" style={{ fontSize: "0.85rem" }}>{plant.wateringFrequency}</span>
           </div>
         </div>
       </article>

@@ -15,4 +15,5 @@ export interface Plant {
   temperature: number; // in Celsius
   humidity: number; // percentage
   moistureHistory: number[]; // latest to oldest
+  wateringFrequency: string; // e.g., "Every 3 days", "Weekly"
 }

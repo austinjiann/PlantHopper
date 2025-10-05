@@ -16,6 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <div className="bg-leaves" aria-hidden="true" />
         <Sidebar />
         <div className="mini-sidebar-offset">{children}</div>
       </body>

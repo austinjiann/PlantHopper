@@ -49,19 +49,14 @@ export default function PlantImageFromFirestore({ plantId }: Props) {
     return () => unsub();
   }, [plantId]);
 
+  const fallbackSrc = `/${plantId}.png`;
+  const displayAlt = alt ?? "Plant";
+
   return (
     <div className="detail-image-shell">
-      {imageUrl ? (
-        <div className="detail-image-frame">
-          <img src={imageUrl} alt={alt ?? "Plant"} className="detail-plant-image" />
-        </div>
-      ) : (
-        <div className="detail-image-placeholder">
-          <div className="detail-image-content">
-            <span>Custom plant image</span>
-          </div>
-        </div>
-      )}
+      <div className="detail-image-frame">
+        <img src={imageUrl ?? fallbackSrc} alt={displayAlt} className="detail-plant-image" />
+      </div>
     </div>
   );
 }
