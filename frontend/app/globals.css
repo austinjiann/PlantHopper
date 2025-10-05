@@ -275,15 +275,15 @@ main {
   gap: 6px;
 }
 
-/* Normalize pump row so badge/buttons baseline match the numeric metric values */
+/* Align pump row with other metrics */
 .detail-hero-metric--pump {
-  align-self: end;
-  margin-top: -6px; /* shift up slightly */
+  align-self: start;
+  margin-top: 0;
 }
 
-/* Lift inline action buttons slightly to align with numeric baselines */
+/* Align inline action buttons with metric values */
 .detail-hero-metric--pump .water-button {
-  margin-top: -14px; /* lift buttons a touch more */
+  margin-top: 0;
 }
 
 .metric-label {

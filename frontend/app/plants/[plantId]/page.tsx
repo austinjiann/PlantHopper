@@ -51,7 +51,6 @@ export default function PlantDetailPage({ params }: PlantDetailPageProps) {
               <span className="detail-id">#{plant.id}</span>
             </div>
             <h1>{plant.name}</h1>
-            <p className="detail-subtitle">{plant.species} • {plant.location}</p>
             <div className="detail-hero-metrics">
               <div className="detail-hero-metric"><span className="metric-label">Soil moisture</span><span className="metric-value">{plant.soilMoisture}%</span></div>
               <SpeciesAndTarget plantId={plant.id} fallbackTarget={plant.targetMoisture} />
@@ -80,7 +79,7 @@ export default function PlantDetailPage({ params }: PlantDetailPageProps) {
 
           <div className="detail-tiles">
             <div className="detail-tile"><span className="tile-label">Soil health</span><span className="tile-value">Dry</span></div>
-            <div className="detail-tile"><span className="tile-label">Fertilization</span><span className="tile-value">Balanced</span></div>
+            <div className="detail-tile"><span className="tile-label">Watering frequency</span><span className="tile-value">{plant.wateringFrequency}</span></div>
           </div>
 
           
