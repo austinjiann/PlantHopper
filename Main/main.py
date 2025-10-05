@@ -5,7 +5,9 @@ import threading
 import time
 import serial
 import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import credentials, firestore, storage
+from datetime import datetime
+import os
 from typing import Optional
 
 # Your detector wrapper: must expose AprilTagDetector with:
@@ -140,8 +142,85 @@ def _read_moisture_snapshot(seconds: float = 3.0):
 # --------------------------------------------------------------------------------------
 
 
+# ---------------- Photo Capture & Upload ----------------
+def capture_and_upload_photo(cap: cv2.VideoCapture, plant_id: str, db):
+    """
+    Capture a photo from the camera and upload it to Firebase Storage.
+    Saves to preprocessed_plant_pictures/{plant_id} (overwrites previous photo).
+    Also saves metadata to Firestore under preprocessed_plant_pictures collection.
+    
+    Returns: (success: bool, error_message: str or None, download_url: str or None)
+    """
+    try:
+        print(f"[Photo] Capturing photo for {plant_id}...")
+        
+        # Capture frame
+        ret, frame = cap.read()
+        if not ret or frame is None:
+            return False, "Failed to capture frame from camera", None
+        
+        # Generate timestamp
+        timestamp = datetime.now()
+        timestamp_str = timestamp.strftime("%Y%m%dT%H%M%SZ")
+        
+        # Use plant_id as filename (this will overwrite previous image)
+        filename = f"{plant_id}.jpg"
+        local_path = f"/tmp/{filename}"
+        
+        # Save frame locally first
+        cv2.imwrite(local_path, frame)
+        print(f"[Photo] Saved locally to {local_path}")
+        
+        # Upload to Firebase Storage - overwrites previous file
+        bucket = storage.bucket()
+        storage_path = f"preprocessed_plant_pictures/{plant_id}"
+        blob = bucket.blob(storage_path)
+        
+        print(f"[Photo] Uploading to Firebase Storage: {storage_path}")
+        blob.upload_from_filename(local_path)
+        
+        # Make the blob publicly accessible and get URL
+        blob.make_public()
+        download_url = blob.public_url
+        
+        # Get image dimensions
+        height, width = frame.shape[:2]
+        
+        # Save/update metadata to Firestore - use plant_id as document ID
+        image_doc = {
+            "plantId": plant_id,
+            "storagePath": storage_path,
+            "downloadURL": download_url,
+            "timestamp": firestore.SERVER_TIMESTAMP,
+            "timestampStr": timestamp_str,
+            "width": width,
+            "height": height
+        }
+        
+        # Use plant_id as document ID to overwrite previous metadata
+        db.collection("preprocessed_plant_pictures").document(plant_id).set(image_doc)
+        print(f"[Photo] Metadata saved to Firestore")
+        print(f"[Photo] Download URL: {download_url}")
+        
+        # Clean up local file
+        try:
+            os.remove(local_path)
+        except:
+            pass
+        
+        return True, None, download_url
+        
+    except Exception as e:
+        error_msg = f"Error capturing/uploading photo: {str(e)}"
+        print(f"[Photo] {error_msg}")
+        import traceback
+        traceback.print_exc()
+        return False, error_msg, None
+# --------------------------------------------------------
+
+
 # ============================ Firebase Thread ============================
-def firebase_thread(firebase_cred_path: str, plant_tag_mapping: dict):
+def firebase_thread(firebase_cred_path: str, plant_tag_mapping: dict, cap: cv2.VideoCapture):
     """
     Firebase listener thread with strict time-based WATER behavior:
       - SCAN: send found:false at WATER_SEND_HZ for exactly waterScanSeconds (or until tag detected)
@@ -152,9 +231,12 @@ def firebase_thread(firebase_cred_path: str, plant_tag_mapping: dict):
 
     try:
         cred = credentials.Certificate(firebase_cred_path)
-        firebase_admin.initialize_app(cred)
+        # Initialize with storage bucket
+        firebase_admin.initialize_app(cred, {
+            'storageBucket': 'planthopper-2fbc8.appspot.com'
+        })
         db = firestore.client()
-        print("[Firebase] Firebase initialized.")
+        print("[Firebase] Firebase initialized with Storage.")
 
         def water_worker(plant_id: str, target_tag_id: int,
                          send_hz: float, scan_seconds: float, fire_seconds: float,
@@ -275,12 +357,15 @@ def firebase_thread(firebase_cred_path: str, plant_tag_mapping: dict):
                     ).start()
 
                 elif command == "scan":
-                    # Simple time-based tracker (left similar to your earlier behavior)
+                    # Track plant AND capture photo
+                    print(f"[Firebase] ===== SCAN COMMAND for {plant_id} =====")
+                    
                     target_tag_id = plant_tag_mapping.get(plant_id)
                     if target_tag_id is None:
+                        print(f"[Firebase] No AprilTag mapping for plant {plant_id}")
                         db.collection("plants").document(plant_id).update({
                             "command": None,
-                            "trackingSuccess": False,
+                            "scanSuccess": False,
                             "error": "No AprilTag mapping found"
                         })
                         continue
@@ -291,11 +376,15 @@ def firebase_thread(firebase_cred_path: str, plant_tag_mapping: dict):
 
                     dt = 1.0 / max(TRACK_SEND_HZ, 1e-6)
                     until = time.time() + max(TRACK_SECONDS, 0.5)
-                    print(f"[Firebase] TRACK {target_tag_id} for {TRACK_SECONDS:.1f}s @ {TRACK_SEND_HZ:.1f} Hz.")
+                    print(f"[Firebase] Tracking tag {target_tag_id} for {TRACK_SECONDS:.1f}s @ {TRACK_SEND_HZ:.1f} Hz.")
                     sent_any = False
+                    photo_captured = False
+                    photo_url = None
+                    
                     while running and time.time() < until:
                         with _detection_lock:
                             pose = latest_detections.get(int(target_tag_id), None)
+
                         if pose is None:
                             _send_cmd_track(tag_id=int(target_tag_id), found=False,
                                             dx_m=0.0, pitch_deg=DEFAULT_PITCH, shoot=False)
@@ -305,14 +394,37 @@ def firebase_thread(firebase_cred_path: str, plant_tag_mapping: dict):
                             _send_cmd_track(tag_id=int(target_tag_id), found=True,
                                             dx_m=dx_m, pitch_deg=pitch_deg, shoot=False)
                             sent_any = True
+                            
+                            # Capture photo once when tag is found
+                            if not photo_captured:
+                                print(f"[Firebase] Tag found, capturing photo...")
+                                success, error, url = capture_and_upload_photo(cap, plant_id, db)
+                                photo_captured = True
+                                if success:
+                                    photo_url = url
+                                    print(f"[Firebase] Photo captured successfully")
+                                else:
+                                    print(f"[Firebase] Photo capture failed: {error}")
+                        
                         time.sleep(dt)
 
-                    db.collection("plants").document(plant_id).update({
+                    # Update plant document with results
+                    update_data = {
                         "command": None,
-                        "lastTracked": firestore.SERVER_TIMESTAMP,
-                        "trackingSuccess": sent_any
-                    })
-                    print("[Firebase] TRACK complete.\n")
+                        "lastScanned": firestore.SERVER_TIMESTAMP,
+                        "scanSuccess": sent_any and photo_captured
+                    }
+                    
+                    if photo_url:
+                        update_data["lastPhotoURL"] = photo_url
+                    
+                    if not photo_captured and sent_any:
+                        update_data["error"] = "Tracking successful but photo capture failed"
+                    elif not sent_any:
+                        update_data["error"] = "Target not found during scan"
+                    
+                    db.collection("plants").document(plant_id).update(update_data)
+                    print(f"[Firebase] ===== SCAN COMMAND COMPLETE =====\n")
 
                 elif command == "sensor":
                     print("[Firebase] Reading moisture snapshot...")
@@ -473,7 +585,7 @@ def run_camera(args, detector: AprilTagDetector, cap: cv2.VideoCapture):
 def main():
     global running
 
-    ap = argparse.ArgumentParser(description="PlantHopper (global ser, time-based WATER, dz in WATER)")
+    ap = argparse.ArgumentParser(description="PlantHopper (global ser, time-based WATER, dz in WATER, photo capture)")
     ap.add_argument("--cam", type=int, default=0, help="Camera index (default 0)")
     ap.add_argument("--width", type=int, default=1920, help="Capture width")
     ap.add_argument("--height", type=int, default=1080, help="Capture height")
@@ -489,7 +601,7 @@ def main():
     args = ap.parse_args()
 
     print("=" * 60)
-    print("PlantHopper System Starting (global ser, time-based WATER, dz in WATER)")
+    print("PlantHopper System Starting (with photo capture)")
     print("=" * 60)
     print("Press Q in the camera window or Ctrl+C to stop.\n")
 
@@ -520,10 +632,10 @@ def main():
 
         print("[Main] All systems initialized successfully\n")
 
-        # Start Firebase listener
+        # Start Firebase listener (now passes cap for photo capture)
         fb_thread = threading.Thread(
             target=firebase_thread,
-            args=(args.firebase_cred, plant_tag_mapping),
+            args=(args.firebase_cred, plant_tag_mapping, cap),
             daemon=True
         )
         fb_thread.start()
