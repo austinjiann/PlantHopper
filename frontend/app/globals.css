@@ -156,7 +156,7 @@ main {
 .detail-main {
   width: min(1440px, 100%);
   margin: 0 auto;
-  padding: 24px;
+  padding: 12px;
   display: grid;
   gap: 28px;
   justify-items: center;
@@ -191,14 +191,22 @@ main {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-  gap: 40px;
-  padding: 48px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 10px; /* tighter space between photo and right content */
+  padding: 28px 28px 28px 18px; /* reduce left padding */
+  align-items: start; /* pin both columns to top */
   position: relative;
   overflow: hidden;
+.detail-left {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  width: 380px; /* match .detail-image-frame width */
+  max-width: 100%;
+}
   width: 100%;
   max-width: 1400px;
-  min-height: 680px;
+  min-height: 560px;
   margin: 0 auto;
 }
 
@@ -225,7 +233,7 @@ main {
   position: relative;
   display: grid;
   gap: 18px;
-  margin-top: 24px; /* shift the text block down */
+  margin-top: 12px; /* shift the text block down */
 }
 
 .detail-hero-top {
@@ -243,7 +251,7 @@ main {
 
 .detail-hero h1 {
   margin: 0;
-  font-size: 2.4rem;
+  font-size: 2.05rem; /* slightly smaller */
   color: var(--text-secondary);
 }
 
@@ -256,7 +264,7 @@ main {
 .detail-hero-metrics {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 14px; /* tighter metric spacing */
   align-items: center;
 }
 
@@ -277,14 +285,14 @@ main {
 }
 
 .metric-label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
 
 .metric-value {
-  font-size: 1.4rem;
+  font-size: 1.3rem; /* slightly smaller */
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -293,20 +301,26 @@ main {
   position: relative;
   display: grid;
   place-items: center;
-  padding: 12px;
+  justify-items: start; /* keep image from stretching full width */
+  justify-self: start; /* prevent grid track stretch */
+  max-width: none;
+  padding: 8px;
+  /* Nudge image slightly right and down per design */
+  margin-top: 10px;
+  margin-left: 14px;
 }
 
 .detail-image-frame {
-  width: 100%;
-  height: 420px;
+  width: 380px; /* smaller fixed width */
+  height: 380px;
   border-radius: var(--radius-lg);
   overflow: hidden;
   border: 1px solid rgba(148, 163, 184, 0.3);
 }
 
 .detail-image-placeholder {
-  width: 100%;
-  height: 420px; /* cap to template allocation */
+  width: 380px; /* match real image frame */
+  height: 380px; /* cap to template allocation */
   border-radius: var(--radius-lg);
   border: 2px dashed rgba(148, 163, 184, 0.35);
   display: flex;
@@ -369,6 +383,16 @@ main {
   transform: none;
 }
 
+.water-button:active {
+  background: var(--accent-strong);
+  transform: none;
+  padding: 12px 24px;
+}
+
+.water-button.water-button--inline:active {
+  padding: 5px 12px;
+}
+
 .water-button:disabled {
   cursor: not-allowed;
   opacity: 0.75;
@@ -410,9 +434,9 @@ main {
 /* Right-side column stack (growth + tiles + audio) */
 .detail-side {
   display: grid;
-  gap: 16px;
+  gap: 12px; /* reduce vertical spacing on right column */
   align-content: start;
-  padding-top: 12px; /* align right column start with image box top */
+  padding-top: 8px; /* align right column start with image box top */
 }
 
 .growth-card {
@@ -421,6 +445,51 @@ main {
   border-radius: var(--radius-md);
   padding: 16px;
   box-shadow: var(--shadow-sm);
+}
+
+/* Care tips panel */
+.care-tips {
+  margin-top: 12px;
+  background: var(--surface-subtle);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  z-index: 1; /* ensure above adjacent elements */
+  /* match the perceived image width by subtracting the left/right offsets */
+  width: calc(100% - 30px);
+  /* align with image frame which is offset by 14px margin + 8px padding */
+  margin-left: 22px;
+  margin-right: 8px;
+  font-size: 0.9rem; /* slightly smaller text */
+}
+
+.care-tips__title {
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.care-tips__list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-primary);
+  display: grid;
+  gap: 6px;
+}
+
+.care-tips__loading {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(15, 23, 42, 0.15);
+  border-top-color: var(--accent);
+  animation: care-spin 0.8s linear infinite;
+}
+
+@keyframes care-spin {
+  to { transform: rotate(360deg); }
 }
 
 .growth-card-top {
@@ -512,6 +581,11 @@ main {
 .tile-value {
   font-weight: 600;
   color: var(--text-secondary);
+}
+
+/* smaller value for long watering frequency text */
+.tile-value--small {
+  font-size: 0.9rem;
 }
 
 .audio-card {

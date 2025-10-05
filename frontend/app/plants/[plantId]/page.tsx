@@ -6,6 +6,7 @@ import { WaterPlantButton } from "@/components/WaterPlantButton";
 import { wateringTimeline } from "@/lib/mockData";
 import { getPlantIds, getRequiredPlant } from "@/lib/plants";
 import { MoistureBarChart } from "@/components/MoistureBarChart";
+const CareTips = dynamic(() => import("@/components/CareTips"), { ssr: false });
 const PlantImageFromFirestore = dynamic(
   () => import("@/components/PlantImageFromFirestore"),
   { ssr: false }
@@ -40,8 +41,11 @@ export default function PlantDetailPage({ params }: PlantDetailPageProps) {
     <main className="detail-main">
 
       <section className="detail-hero">
-        {/* Large visual on the left to mirror the reference */}
-        <PlantImageFromFirestore plantId={plant.id} />
+        {/* Left column: image + care tips stacked */}
+        <div className="detail-left">
+          <PlantImageFromFirestore plantId={plant.id} />
+          <CareTips plantId={plant.id} species={plant.species} soilMoisture={plant.soilMoisture} wateringFrequency={plant.wateringFrequency} />
+        </div>
 
         {/* Right-side stacked content: title + metric chips + cards */}
         <div className="detail-side">
@@ -79,10 +83,9 @@ export default function PlantDetailPage({ params }: PlantDetailPageProps) {
 
           <div className="detail-tiles">
             <div className="detail-tile"><span className="tile-label">Soil health</span><span className="tile-value">Dry</span></div>
-            <div className="detail-tile"><span className="tile-label">Watering frequency</span><span className="tile-value">{plant.wateringFrequency}</span></div>
+            <div className="detail-tile"><span className="tile-label">Watering frequency</span><span className="tile-value tile-value--small">{plant.wateringFrequency}</span></div>
           </div>
 
-          
         </div>
       </section>
 
