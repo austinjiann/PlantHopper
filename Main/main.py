@@ -1,9 +1,3 @@
-"""
-Main integrated system for PlantHopper.
-Combines AprilTag detection, Firebase integration, and Arduino control.
-Uses a global `ser` (pyserial) for all serial I/O and a strict time-based WATER worker.
-"""
-
 import cv2
 import numpy as np
 import argparse
@@ -50,15 +44,16 @@ def _serial_write_line(line: str) -> bool:
         return False
 
 
-def _send_cmd_water(found: bool, dx_m: float, pitch_deg: float, sweep_s: Optional[float] = None):
+def _send_cmd_water(found: bool, dx_m: float, dz_m: float, pitch_deg: float, sweep_s: Optional[float] = None):
     """
     Format:
-      cmd:WATER;found:bool;dx:num;pitch:deg;[sweep:seconds;]
+      cmd:WATER;found:bool;dx:num;dz:num;pitch:deg;[sweep:seconds;]
     """
     parts = [
         "cmd:WATER",
         f"found:{str(found).lower()}",
         f"dx:{dx_m:.3f}",
+        f"dz:{dz_m:.3f}",
         f"pitch:{int(round(pitch_deg))}",
     ]
     if sweep_s is not None:
@@ -171,6 +166,7 @@ def firebase_thread(firebase_cred_path: str, plant_tag_mapping: dict):
             fire_end = None
 
             last_pitch_deg = float(default_pitch)
+            last_dz_m = 0.0
             success = False
 
             next_send = time.time()  # rate limiter tick
@@ -193,16 +189,18 @@ def firebase_thread(firebase_cred_path: str, plant_tag_mapping: dict):
 
                         if pose is None:
                             remaining = max(0.0, scan_end - now)
-                            _send_cmd_water(found=False, dx_m=0.0,
+                            _send_cmd_water(found=False, dx_m=0.0, dz_m=last_dz_m,
                                             pitch_deg=last_pitch_deg, sweep_s=remaining)
                         else:
                             # Transition to FIRE
                             dx_m = float(pose["tvec"][0])
+                            dz_m = float(pose["tvec"][2])
                             pitch_deg = float(pose["pitch"])
                             last_pitch_deg = pitch_deg
+                            last_dz_m = dz_m
                             fire_end = now + max(0.0, fire_seconds)
                             print(f"[Water] DETECTED. Enter FIRE: {fire_seconds:.1f}s")
-                            _send_cmd_water(found=True, dx_m=dx_m, pitch_deg=pitch_deg, sweep_s=0)
+                            _send_cmd_water(found=True, dx_m=dx_m, dz_m=dz_m, pitch_deg=pitch_deg, sweep_s=0)
 
                         next_send += dt
                     else:
@@ -210,13 +208,15 @@ def firebase_thread(firebase_cred_path: str, plant_tag_mapping: dict):
                         with _detection_lock:
                             pose_now = latest_detections.get(int(target_tag_id), None)
                         if pose_now is None:
-                            _send_cmd_water(found=True, dx_m=0.0,
+                            _send_cmd_water(found=True, dx_m=0.0, dz_m=last_dz_m,
                                             pitch_deg=last_pitch_deg, sweep_s=0)
                         else:
                             dx_m = float(pose_now["tvec"][0])
+                            dz_m = float(pose_now["tvec"][2])
                             pitch_deg = float(pose_now["pitch"])
                             last_pitch_deg = pitch_deg
-                            _send_cmd_water(found=True, dx_m=dx_m, pitch_deg=pitch_deg, sweep_s=0)
+                            last_dz_m = dz_m
+                            _send_cmd_water(found=True, dx_m=dx_m, dz_m=dz_m, pitch_deg=pitch_deg, sweep_s=0)
                         next_send += dt
 
                 # Finish when fire window ends
@@ -473,7 +473,7 @@ def run_camera(args, detector: AprilTagDetector, cap: cv2.VideoCapture):
 def main():
     global running
 
-    ap = argparse.ArgumentParser(description="PlantHopper (global ser, time-based WATER)")
+    ap = argparse.ArgumentParser(description="PlantHopper (global ser, time-based WATER, dz in WATER)")
     ap.add_argument("--cam", type=int, default=0, help="Camera index (default 0)")
     ap.add_argument("--width", type=int, default=1920, help="Capture width")
     ap.add_argument("--height", type=int, default=1080, help="Capture height")
@@ -489,7 +489,7 @@ def main():
     args = ap.parse_args()
 
     print("=" * 60)
-    print("PlantHopper System Starting (global ser, time-based WATER)")
+    print("PlantHopper System Starting (global ser, time-based WATER, dz in WATER)")
     print("=" * 60)
     print("Press Q in the camera window or Ctrl+C to stop.\n")
 
