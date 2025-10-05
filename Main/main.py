@@ -345,7 +345,7 @@ def firebase_thread(firebase_cred_path: str, plant_tag_mapping: dict, cap: cv2.V
 
                     send_hz       = float(data.get("waterSendHz", 10.0))
                     scan_seconds  = float(data.get("waterScanSeconds", 17.0))
-                    fire_seconds  = float(data.get("waterFireSeconds", 14.0))
+                    fire_seconds  = float(data.get("waterFireSeconds", 10.0))
                     default_pitch = float(data.get("waterPitchDeg", 0.0))
 
                     # Clear command immediately (UI responsiveness) and launch worker
