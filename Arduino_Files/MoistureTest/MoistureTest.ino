@@ -9,11 +9,11 @@ struct Sensor {
 };
 
 Sensor sensors[] = {
-  {A0, "sensor_1", 820, 300},
-  {A1, "sensor_2", 820, 300},
-  {A2, "sensor_3", 820, 300},
-  {A3, "sensor_4", 820, 300},
-  {A4, "sensor_5", 820, 300},
+  {A0, "sensor_1", 450, 179},
+  {A1, "sensor_2", 450, 179},
+  {A2, "sensor_3", 450, 179},
+  {A3, "sensor_4", 450, 179},
+  {A4, "sensor_5", 450, 179},
 };
 const int NUM_SENSORS = sizeof(sensors) / sizeof(sensors[0]);
 
@@ -22,6 +22,7 @@ const unsigned long SAMPLE_PERIOD_MS = 2000;
 unsigned long lastSampleMs = 0;
 
 //179 is lowest
+//450 is driest
 
 // --- helpers ---
 int readAveraged(uint8_t pin, uint8_t n = 5) {

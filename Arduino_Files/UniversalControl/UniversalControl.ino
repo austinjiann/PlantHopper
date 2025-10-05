@@ -52,11 +52,11 @@ struct MoistureSensor {
 
 // Calibrate these to your probes (copied from MoistureTest.ino defaults)
 MoistureSensor MOIST_SENSORS[] = {
-  {A0, "sensor_1", 820, 300},
-  {A1, "sensor_2", 820, 300},
-  {A2, "sensor_3", 820, 300},
-  {A3, "sensor_4", 820, 300},
-  {A4, "sensor_5", 820, 300},
+  {A0, "sensor_1", 450, 179},
+  {A1, "sensor_2", 450, 179},
+  {A2, "sensor_3", 450, 179},
+  {A3, "sensor_4", 450, 179},
+  {A4, "sensor_5", 450, 179},
 };
 const size_t MOIST_COUNT = sizeof(MOIST_SENSORS) / sizeof(MoistureSensor);
 
