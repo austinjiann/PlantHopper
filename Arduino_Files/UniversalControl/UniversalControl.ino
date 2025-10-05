@@ -10,9 +10,13 @@ Servo shooter;
 const float SWEEP_STEP_UNITS = 2.0;
 const unsigned long SWEEP_PERIOD_MS = 12;
 
-// Positional shooter (neutral is 90)
-const int SHOOT_NEUTRAL = 90;
-const unsigned long SHOOT_STEP_MS = 1000; // dwell per step: 0°, 180°, then 90°
+// ===== Continuous shooter (90=stop, 180=forward/shoot, 0=reverse) =====
+const int SHOOT_STOP_DEG = 90;
+const int SHOOT_FWD_DEG  = 180;          // shoot direction
+const int SHOOT_REV_DEG  = 0;            // reverse (optional)
+const unsigned long SHOOT_FWD_MS = 5000;  // how long to spin forward
+const unsigned long SHOOT_REV_MS = 250;  // brief reverse duration
+const bool SHOOT_USE_REV = false;        // set true if you want a short reverse after shooting
 
 const float ALIGN_THRESH_M   = 0.020f; // |dx| < 2 cm
 const int   STABLE_FRAMES_N  = 8;      // consecutive frames aligned before shooting
@@ -28,9 +32,9 @@ unsigned long shootStartMs = 0;
 
 enum ShootState : uint8_t {
   SHOOT_IDLE = 0,
-  SHOOT_GO_0,
-  SHOOT_GO_180,
-  SHOOT_GO_90
+  SHOOT_SPIN_FWD,
+  SHOOT_SPIN_REV,
+  SHOOT_STOP
 };
 ShootState shootState = SHOOT_IDLE;
 
@@ -38,7 +42,7 @@ String cmd = "";
 int    cmdId = 0;
 bool   cmdFound = false;
 float  cmdDx = 0.0f;
-float  cmdDz = 0.0f;       // <<< NEW: dz (meters) parsed from serial
+float  cmdDz = 0.0f;       // dz (meters) parsed from serial
 int    cmdPitch = 0;       // still used by TRACK path
 bool   cmdShoot = false;
 
@@ -92,25 +96,24 @@ void setup() {
 
   pitch.attach(9, 1000, 2200);
   turret.attach(10);
-  shooter.attach(8);
+  shooter.attach(8);                    // continuous rotation, use degrees: 90 stop, 180 fwd, 0 rev
 
-  pitch.write(149);                // your mechanical neutral
-  shooter.write(SHOOT_NEUTRAL);
+  pitch.write(149);                     // your mechanical neutral
+  shooter.write(SHOOT_STOP_DEG);        // start stopped
 }
 
 // Map helpers
 int convertTurretAngle(int targetAngle){ return map(targetAngle, 0, 300, 0, 180); }
-// NOTE: your previous code uses an offset of +149 when writing pitch.
-// We keep convertPitchAngle for TRACK path. For WATER we now write absolute.
+// TRACK path still uses offset mapping for pitch
 int convertPitchAngle(int targetAngle){ return targetAngle + 149; }
 
-// --- Non-blocking shooter sequence: 0 -> 180 -> 90 ---
+// --- Non-blocking shooter: timed spin forward (optional reverse) ---
 void shoot() {
   if (shootActive) return;
   shootActive  = true;
-  shootState   = SHOOT_GO_0;
+  shootState   = SHOOT_SPIN_FWD;
   shootStartMs = millis();
-  shooter.write(0);
+  shooter.write(SHOOT_FWD_DEG);         // spin forward to shoot
 }
 
 void serviceShooterTimer() {
@@ -118,31 +121,35 @@ void serviceShooterTimer() {
 
   unsigned long now = millis();
   switch (shootState) {
-    case SHOOT_GO_0:
-      if (now - shootStartMs >= SHOOT_STEP_MS) {
-        shooter.write(180);
-        shootState   = SHOOT_GO_180;
+    case SHOOT_SPIN_FWD:
+      if (now - shootStartMs >= SHOOT_FWD_MS) {
+        if (SHOOT_USE_REV) {
+          shooter.write(SHOOT_REV_DEG);
+          shootState   = SHOOT_SPIN_REV;
+          shootStartMs = now;
+        } else {
+          shooter.write(SHOOT_STOP_DEG);
+          shootState   = SHOOT_STOP;
+          shootStartMs = now;
+        }
+      }
+      break;
+
+    case SHOOT_SPIN_REV:
+      if (now - shootStartMs >= SHOOT_REV_MS) {
+        shooter.write(SHOOT_STOP_DEG);
+        shootState   = SHOOT_STOP;
         shootStartMs = now;
       }
       break;
 
-    case SHOOT_GO_180:
-      if (now - shootStartMs >= SHOOT_STEP_MS) {
-        shooter.write(SHOOT_NEUTRAL);
-        shootState   = SHOOT_GO_90;
-        shootStartMs = now;
-      }
-      break;
-
-    case SHOOT_GO_90:
-      if (now - shootStartMs >= SHOOT_STEP_MS) {
-        shootState  = SHOOT_IDLE;
-        shootActive = false;
-      }
+    case SHOOT_STOP:
+      shootState  = SHOOT_IDLE;
+      shootActive = false;
       break;
 
     default:
-      shooter.write(SHOOT_NEUTRAL);
+      shooter.write(SHOOT_STOP_DEG);
       shootState  = SHOOT_IDLE;
       shootActive = false;
       break;
@@ -203,15 +210,15 @@ void loop() {
       alignedFrames = 0;
     }
 
-    // Keep TRACK pitch behavior as-is (follows your earlier flow)
+    // TRACK pitch behavior unchanged
     pitch.write(convertPitchAngle(cmdPitch));
 
   } else if (cmd == "WATER") {
-    // Parse fields (found, dx, dz, pitch kept but not used for WATER anymore)
+    // Parse fields (found, dx, dz, pitch)
     int idx_found = line.indexOf("found:");
     int idx_pitch = line.indexOf("pitch:");
     int idx_dx    = line.indexOf("dx:");
-    int idx_dz    = line.indexOf("dz:");     // <<< NEW
+    int idx_dz    = line.indexOf("dz:");
 
     if (idx_found >= 0) {
       String s = line.substring(idx_found + 6, line.indexOf(';', idx_found));
@@ -244,7 +251,7 @@ void loop() {
       if (fabs(cmdDx) < ALIGN_THRESH_M && !shootActive) {
         alignedFrames++;
         if (alignedFrames >= STABLE_FRAMES_N) {
-          shoot();
+          shoot();      // spins continuous servo per timings above
           alignedFrames = 0;
         }
       } else if (!shootActive) {
@@ -264,19 +271,16 @@ void loop() {
       alignedFrames = 0;
     }
 
-    // ===== NEW WATER PITCH CONTROL =====
-    // pitch_deg = 90 - atan( 8cm / dz_cm ), using dz from Python (meters -> cm)
-    float dz_cm = cmdDz * 100.0f;
-    if (dz_cm < 0.5f) dz_cm = 0.5f;                 // avoid div-by-zero / tiny dz
-    float pitch_rad = atanf(5.0f / dz_cm);          // atan in radians
+    // ===== WATER PITCH CONTROL (from dz) =====
+    // pitch_deg = 90 - atan( 8cm / dz_cm ); uses dz from Python (meters -> cm)
+    float dz_cm = cmdDz * 100.0f + 4;
+    if (dz_cm < 0.2f) dz_cm = 0.2f;                 // avoid div-by-zero / tiny dz
+    float pitch_rad = atanf(4.0f / dz_cm);          // your tuned constant (change to 8.0f if desired)
     float pitch_deg = -(90.0f - (pitch_rad * 57.2958f)); // rad->deg
 
-    // Constrain to servo's safe range (0..180). If your mech wants a smaller window, tighten here.
     int servoDeg = (int)roundf(pitch_deg);
-    if (servoDeg < -22)   servoDeg = -22;
-    if (servoDeg > 25) servoDeg = 25;
-
-    // For WATER we drive the absolute servo angle directly:
+    if (servoDeg < -22) servoDeg = -22;
+    if (servoDeg > 25)  servoDeg = 25;
     pitch.write(convertPitchAngle(servoDeg));
   }
 }
