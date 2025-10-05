@@ -7,7 +7,7 @@ Servo pitch;
 Servo turret;
 Servo shooter;
 
-const float SWEEP_STEP_UNITS = 2.0;
+const float SWEEP_STEP_UNITS = 1.2;
 const unsigned long SWEEP_PERIOD_MS = 12;
 
 // ===== Continuous shooter (90=stop, 180=forward/shoot, 0=reverse) =====

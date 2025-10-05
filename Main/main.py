@@ -6,15 +6,20 @@ import time
 import serial
 import firebase_admin
 from firebase_admin import credentials, firestore, storage
+from google.cloud import storage as gcs_storage  # GCS client for bucket verification
 from datetime import datetime
 import os
 from typing import Optional
+
+# ============================ Firebase Storage config ============================
+# Do NOT use "firebasestorage.app" (that's a web domain, not a bucket). < Sybau i am right.
+FIREBASE_STORAGE_BUCKET = os.getenv("FIREBASE_STORAGE_BUCKET", "planthopper-2fbc8.firebasestorage.app")
+# ================================================================================
 
 # Your detector wrapper: must expose AprilTagDetector with:
 #   .detect_tags(frame) -> dict[tag_id] = pose (with .tvec, .roll, .pitch, .yaw, .distance)
 #   .draw_detections(frame, detections) -> frame
 from modules.apriltag_detector import AprilTagDetector
-
 
 # ============================ Global serial ============================
 ser = serial.Serial("/dev/tty.usbserial-A50285BI", 115200, timeout=1, write_timeout=1)
@@ -33,6 +38,9 @@ _detection_lock = threading.Lock()
 # Map[int tag_id] -> {"tvec": np.ndarray shape(3,), "roll": float, "pitch": float, "yaw": float, "distance": float}
 latest_detections = {}
 
+# Shared latest frame buffer (camera thread writes; other threads read)
+_last_frame = None
+_last_frame_lock = threading.Lock()
 
 # ----------------------------- Serial helpers -----------------------------
 def _serial_write_line(line: str) -> bool:
@@ -143,73 +151,91 @@ def _read_moisture_snapshot(seconds: float = 3.0):
 
 
 # ---------------- Photo Capture & Upload ----------------
-def capture_and_upload_photo(cap: cv2.VideoCapture, plant_id: str, db):
+def capture_and_upload_photo(plant_id: str, db):
     """
-    Capture a photo from the camera and upload it to Firebase Storage.
-    Saves to preprocessed_plant_pictures/{plant_id} (overwrites previous photo).
-    Also saves metadata to Firestore under preprocessed_plant_pictures collection.
-    
+    Capture a photo from the LATEST PUBLISHED FRAME (not from cap!),
+    and upload it to Firebase Storage.
+    Saves to preprocessed_plant_photos/{plant_id}.jpg (overwrites previous photo).
+    Also saves metadata to Firestore under preprocessed_plant_photos collection.
+
     Returns: (success: bool, error_message: str or None, download_url: str or None)
     """
     try:
         print(f"[Photo] Capturing photo for {plant_id}...")
-        
-        # Capture frame
-        ret, frame = cap.read()
-        if not ret or frame is None:
-            return False, "Failed to capture frame from camera", None
-        
+
+        # Pull a copy of the latest frame (wait up to 2s)
+        frame_copy = None
+        deadline = time.time() + 2.0
+        while time.time() < deadline and frame_copy is None:
+            with _last_frame_lock:
+                if _last_frame is not None:
+                    frame_copy = _last_frame.copy()
+            if frame_copy is None:
+                time.sleep(0.05)
+
+        if frame_copy is None:
+            print("[Photo] ERROR: No frame available from camera thread (is the camera running?)")
+            return False, "No frame available from camera thread", None
+
         # Generate timestamp
         timestamp = datetime.now()
         timestamp_str = timestamp.strftime("%Y%m%dT%H%M%SZ")
-        
+
         # Use plant_id as filename (this will overwrite previous image)
         filename = f"{plant_id}.jpg"
         local_path = f"/tmp/{filename}"
-        
+
         # Save frame locally first
-        cv2.imwrite(local_path, frame)
+        ok = cv2.imwrite(local_path, frame_copy)
+        if not ok:
+            print("[Photo] ERROR: cv2.imwrite failed")
+            return False, "cv2.imwrite failed", None
         print(f"[Photo] Saved locally to {local_path}")
-        
+
         # Upload to Firebase Storage - overwrites previous file
-        bucket = storage.bucket()
-        storage_path = f"preprocessed_plant_pictures/{plant_id}"
+        bucket = storage.bucket()  # default bucket from app init
+        storage_path = f"preprocessed_plant_photos/{filename}"
         blob = bucket.blob(storage_path)
-        
+
         print(f"[Photo] Uploading to Firebase Storage: {storage_path}")
-        blob.upload_from_filename(local_path)
-        
-        # Make the blob publicly accessible and get URL
-        blob.make_public()
-        download_url = blob.public_url
-        
+        blob.upload_from_filename(local_path, content_type="image/jpeg")
+
+        # Make the blob publicly accessible and get URL (optional)
+        try:
+            blob.make_public()
+            download_url = blob.public_url
+        except Exception as e:
+            print(f"[Photo] make_public failed ({e}); continuing with storagePath only")
+            download_url = None
+
         # Get image dimensions
-        height, width = frame.shape[:2]
-        
+        height, width = frame_copy.shape[:2]
+
         # Save/update metadata to Firestore - use plant_id as document ID
         image_doc = {
             "plantId": plant_id,
-            "storagePath": storage_path,
-            "downloadURL": download_url,
+            "storagePath": storage_path,   # e.g., preprocessed_plant_photos/plant2.jpg
+            "downloadURL": download_url,   # may be None if bucket is private
             "timestamp": firestore.SERVER_TIMESTAMP,
             "timestampStr": timestamp_str,
-            "width": width,
-            "height": height
+            "width": int(width),
+            "height": int(height)
         }
-        
-        # Use plant_id as document ID to overwrite previous metadata
-        db.collection("preprocessed_plant_pictures").document(plant_id).set(image_doc)
-        print(f"[Photo] Metadata saved to Firestore")
-        print(f"[Photo] Download URL: {download_url}")
-        
+
+        # Write to the collection you expect
+        db.collection("preprocessed_plant_photos").document(plant_id).set(image_doc)
+        print(f"[Photo] Metadata saved to Firestore (preprocessed_plant_photos/{plant_id})")
+        if download_url:
+            print(f"[Photo] Download URL: {download_url}")
+
         # Clean up local file
         try:
             os.remove(local_path)
         except:
             pass
-        
+
         return True, None, download_url
-        
+
     except Exception as e:
         error_msg = f"Error capturing/uploading photo: {str(e)}"
         print(f"[Photo] {error_msg}")
@@ -220,7 +246,7 @@ def capture_and_upload_photo(cap: cv2.VideoCapture, plant_id: str, db):
 
 
 # ============================ Firebase Thread ============================
-def firebase_thread(firebase_cred_path: str, plant_tag_mapping: dict, cap: cv2.VideoCapture):
+def firebase_thread(firebase_cred_path: str, plant_tag_mapping: dict):
     """
     Firebase listener thread with strict time-based WATER behavior:
       - SCAN: send found:false at WATER_SEND_HZ for exactly waterScanSeconds (or until tag detected)
@@ -230,13 +256,31 @@ def firebase_thread(firebase_cred_path: str, plant_tag_mapping: dict, cap: cv2.V
     doc_watch = None
 
     try:
-        cred = credentials.Certificate(firebase_cred_path)
-        # Initialize with storage bucket
-        firebase_admin.initialize_app(cred, {
-            'storageBucket': 'planthopper-2fbc8.appspot.com'
-        })
+        # Initialize Admin SDK (idempotent)
+        try:
+            app = firebase_admin.get_app()
+            print("[Firebase] Reusing existing Firebase app.")
+        except ValueError:
+            cred = credentials.Certificate(firebase_cred_path)
+            app = firebase_admin.initialize_app(cred, {"storageBucket": FIREBASE_STORAGE_BUCKET})
+            print(f"[Firebase] Initialized Firebase app with bucket: {FIREBASE_STORAGE_BUCKET}")
+
         db = firestore.client()
-        print("[Firebase] Firebase initialized with Storage.")
+
+        # Verify the bucket exists using Google Cloud Storage client (not firebase_admin.storage)
+        try:
+            gcs_client = gcs_storage.Client(
+                project=app.project_id,
+                credentials=app.credential.get_credential()
+            )
+            gcs_client.get_bucket(FIREBASE_STORAGE_BUCKET)
+            print(f"[Firebase] Storage bucket verified: {FIREBASE_STORAGE_BUCKET}")
+        except Exception as e:
+            print("\n[Firebase] FATAL: Storage bucket does not exist or is not accessible.")
+            print("  Bucket configured as:", FIREBASE_STORAGE_BUCKET)
+            print("  Fix: Firebase Console → Storage → Get started (default bucket).")
+            print("       Or set FIREBASE_STORAGE_BUCKET to an existing GCS bucket and grant access.")
+            raise
 
         def water_worker(plant_id: str, target_tag_id: int,
                          send_hz: float, scan_seconds: float, fire_seconds: float,
@@ -371,7 +415,7 @@ def firebase_thread(firebase_cred_path: str, plant_tag_mapping: dict, cap: cv2.V
                         continue
 
                     TRACK_SEND_HZ = float(data.get("trackSendHz", 20.0))
-                    TRACK_SECONDS = float(data.get("trackSeconds", 15.0))
+                    TRACK_SECONDS = float(data.get("trackSeconds", 25.0))
                     DEFAULT_PITCH = float(data.get("trackPitchDeg", 0.0))
 
                     dt = 1.0 / max(TRACK_SEND_HZ, 1e-6)
@@ -395,10 +439,10 @@ def firebase_thread(firebase_cred_path: str, plant_tag_mapping: dict, cap: cv2.V
                                             dx_m=dx_m, pitch_deg=pitch_deg, shoot=False)
                             sent_any = True
                             
-                            # Capture photo once when tag is found
+                            # Capture photo once when tag is found (from shared frame buffer)
                             if not photo_captured:
                                 print(f"[Firebase] Tag found, capturing photo...")
-                                success, error, url = capture_and_upload_photo(cap, plant_id, db)
+                                success, error, url = capture_and_upload_photo(plant_id, db)
                                 photo_captured = True
                                 if success:
                                     photo_url = url
@@ -492,8 +536,9 @@ def run_camera(args, detector: AprilTagDetector, cap: cv2.VideoCapture):
     """
     Run AprilTag detection in the main thread (required for OpenCV GUI).
     Populates `latest_detections` each frame for the Firebase thread.
+    Publishes the latest frame to a shared buffer for photo capture.
     """
-    global running, previous_tag_states, latest_detections
+    global running, previous_tag_states, latest_detections, _last_frame
 
     POSITION_THRESHOLD = 0.01  # 1 cm
     ROTATION_THRESHOLD = 2.0   # 2 degrees
@@ -502,7 +547,7 @@ def run_camera(args, detector: AprilTagDetector, cap: cv2.VideoCapture):
     try:
         while running:
             ok, frame = cap.read()
-            if not ok:
+            if not ok or frame is None:
                 print("[Camera] Failed to grab frame.")
                 break
 
@@ -562,6 +607,10 @@ def run_camera(args, detector: AprilTagDetector, cap: cv2.VideoCapture):
             else:
                 cv2.putText(frame, "No AprilTags detected", (20, 40),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
+
+            # Publish latest frame for photo capture (thread-safe)
+            with _last_frame_lock:
+                _last_frame = frame.copy()
 
             cv2.imshow("AprilTag Detector", frame)
             if cv2.waitKey(1) & 0xFF in (ord('q'), ord('Q')):
@@ -632,10 +681,10 @@ def main():
 
         print("[Main] All systems initialized successfully\n")
 
-        # Start Firebase listener (now passes cap for photo capture)
+        # Start Firebase listener (no cap passed; photos use shared frame)
         fb_thread = threading.Thread(
             target=firebase_thread,
-            args=(args.firebase_cred, plant_tag_mapping, cap),
+            args=(args.firebase_cred, plant_tag_mapping),
             daemon=True
         )
         fb_thread.start()
@@ -652,7 +701,7 @@ def main():
         traceback.print_exc()
         running = False
     finally:
-        print("\n[Main] Shutting down...")
+        print("\n[idle] Shutting down...")
         running = False
 
         # Wait briefly for Firebase thread to finish
