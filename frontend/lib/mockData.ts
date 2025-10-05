@@ -3,11 +3,11 @@ import type { Plant } from "@/types/plant";
 export const plants: Plant[] = [
   {
     id: "plant1",
-    name: "Aurora",
-    species: "Phalaenopsis Orchid",
+    name: "Kalanchoe blossfeldiana",
+    species: "Kalanchoe blossfeldiana",
     location: "Atrium North",
-    soilMoisture: 68,
-    targetMoisture: 65,
+    soilMoisture: 95,
+    targetMoisture: 40,
     lightExposure: "medium",
     lastWatered: "2025-10-02T20:30:00Z",
     nextWatering: "2025-10-04T09:00:00Z",
@@ -16,12 +16,12 @@ export const plants: Plant[] = [
     temperature: 23,
     humidity: 56,
     moistureHistory: [65, 63, 60, 58, 57, 60, 62],
-    wateringFrequency: "Every 7-10 days"
+    wateringFrequency: "1-2 weeks"
   },
   {
     id: "plant2",
-    name: "Cascade",
-    species: "Boston Fern",
+    name: "Artemisia",
+    species: "Eruca sativa",
     location: "Lab South",
     soilMoisture: 52,
     targetMoisture: 70,
@@ -33,14 +33,14 @@ export const plants: Plant[] = [
     temperature: 22,
     humidity: 68,
     moistureHistory: [48, 45, 42, 52, 55, 57, 59],
-    wateringFrequency: "Every 2-3 days"
+    wateringFrequency: "Every 7-14 days"
   },
   {
     id: "plant3",
-    name: "Atlas",
+    name: "Zea Mays",
     species: "Ficus Lyrata",
     location: "Conference Hub",
-    soilMoisture: 77,
+    soilMoisture: 77, 
     targetMoisture: 60,
     lightExposure: "high",
     lastWatered: "2025-10-01T18:00:00Z",
@@ -50,11 +50,11 @@ export const plants: Plant[] = [
     temperature: 25,
     humidity: 49,
     moistureHistory: [80, 78, 76, 75, 70, 68, 65],
-    wateringFrequency: "Weekly"
+    wateringFrequency: "1-2 days"
   },
   {
     id: "plant4",
-    name: "Nova",
+    name: "Arugula",
     species: "Haworthia",
     location: "Robotics Garage",
     soilMoisture: 34,
@@ -67,11 +67,11 @@ export const plants: Plant[] = [
     temperature: 26,
     humidity: 35,
     moistureHistory: [32, 35, 40, 45, 38, 34, 33],
-    wateringFrequency: "Every 2 weeks"
+    wateringFrequency: "1-2 days"
   },
   {
     id: "plant5",
-    name: "Ripple",
+    name: "Arugula",
     species: "Monstera Deliciosa",
     location: "Design Studio",
     soilMoisture: 44,
@@ -84,7 +84,7 @@ export const plants: Plant[] = [
     temperature: 24,
     humidity: 60,
     moistureHistory: [40, 42, 39, 38, 44, 48, 52],
-    wateringFrequency: "Every 5-7 days"
+    wateringFrequency: "1-2 days"
   }
 ];
 

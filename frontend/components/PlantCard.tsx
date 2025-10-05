@@ -22,9 +22,6 @@ export function PlantCard({ plant }: PlantCardProps) {
         <header className="plant-card-header">
           <div>
             <h3 style={{ margin: 0 }}>{plant.name}</h3>
-            <p className="secondary-text" style={{ fontSize: "0.85rem" }}>
-              {plant.species}
-            </p>
           </div>
           <StatusBadge variant={plant.health} />
         </header>
