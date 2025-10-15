@@ -1,6 +1,8 @@
 # Planthopper - Hardware
 Planthopper was developed from the ground up, being fully built and designed by the team. 
 
+**Check out our demo and devpost: https://devpost.com/software/plant-hopper**
+
 # CAD
 ![alt text](<images/Screenshot 2025-10-04 184224.png>)
 
